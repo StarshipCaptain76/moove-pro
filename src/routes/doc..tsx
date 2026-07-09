@@ -19,13 +19,14 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { CustomerCombobox } from "@/components/app/CustomerCombobox";
 import { AddressAutocomplete } from "@/components/app/AddressAutocomplete";
 import { CatalogPicker } from "@/components/app/CatalogPicker";
+import { DatePicker } from "@/components/app/DatePicker";
+import { InlineTumbler } from "@/components/app/InlineTumbler";
+import { Slider } from "@/components/ui/slider";
 import { useServerFn } from "@tanstack/react-start";
 import { routeDistance } from "@/lib/maps.functions";
 
@@ -263,18 +264,22 @@ function DocPage() {
                   </Button>
                 </div>
                 <div className="grid grid-cols-[80px_1fr_80px] gap-2 items-center">
-                  <Input
-                    className="h-10 text-center"
-                    type="number" inputMode="decimal"
+                <div className="grid grid-cols-2 gap-2">
+                  <InlineTumbler
                     value={it.qty}
-                    onChange={(e) => updateItem(i, { qty: Number(e.target.value) })}
+                    onChange={(v) => updateItem(i, { qty: Math.max(0, v) })}
+                    step={1}
+                    min={0}
+                    label="Quantity"
                   />
-                  <div className="text-center text-xs text-muted-foreground">×</div>
-                  <Input
-                    className="h-10 text-right"
-                    type="number" inputMode="decimal"
+                  <InlineTumbler
                     value={it.price}
-                    onChange={(e) => updateItem(i, { price: Number(e.target.value) })}
+                    onChange={(v) => updateItem(i, { price: Math.max(0, v) })}
+                    step={10}
+                    fineStep={1}
+                    min={0}
+                    prefix={`${billing.currency} `}
+                    label="Price"
                   />
                 </div>
                 <div className="text-right text-xs text-muted-foreground font-mono">
@@ -298,7 +303,10 @@ function DocPage() {
           </div>
 
           <div className="pt-2 border-t">
-            <Label className="text-xs">Deposit {doc.depositPct}%</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Deposit</Label>
+              <span className="font-display text-lg tabular-nums">{doc.depositPct}%</span>
+            </div>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               {[0, 25, 50, 75, 100].map((pct) => (
                 <button
@@ -315,13 +323,15 @@ function DocPage() {
                   {pct}%
                 </button>
               ))}
-              <Input
-                type="number" inputMode="decimal"
-                className="h-8 w-20 ml-1"
-                value={doc.depositPct}
-                onChange={(e) => update({ depositPct: Number(e.target.value) })}
-              />
             </div>
+            <Slider
+              value={[doc.depositPct]}
+              min={0}
+              max={100}
+              step={5}
+              onValueChange={([v]) => update({ depositPct: v })}
+              className="py-3"
+            />
             <div className="flex justify-between text-sm mt-2">
               <span>Deposit</span>
               <span className="font-semibold">{fmtMoney(t.deposit, billing.currency)}</span>
@@ -340,7 +350,7 @@ function DocPage() {
         {/* Schedule */}
         <Card className="p-3 sm:p-4 space-y-2">
           <Label className="text-xs flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> Scheduled date</Label>
-          <ScheduledDatePicker value={doc.scheduledDate} onChange={(iso) => update({ scheduledDate: iso })} />
+          <DatePicker value={doc.scheduledDate} onChange={(iso) => update({ scheduledDate: iso })} clearable />
         </Card>
 
         {/* Notes */}
