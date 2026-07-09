@@ -142,6 +142,14 @@ interface State {
   renameExpenseCategory: (oldName: string, newName: string) => void;
   deleteExpenseCategory: (name: string) => void;
   setDensity: (d: Density) => void;
+  importHistorical: (p: {
+    expenses: Expense[];
+    docs: Doc[];
+    newExpenseCategories: string[];
+    newCatalogItems: CatalogItem[];
+    maxInvoiceNo: number;
+  }) => { expenses: number; docs: number };
+  clearHistorical: () => { expenses: number; docs: number };
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -253,6 +261,40 @@ export const useStore = create<State>()(
           expenses: s.expenses.map((e) => (e.category === name ? { ...e, category: "Other" } : e)),
         })),
       setDensity: (d) => set({ density: d }),
+      importHistorical: (p) => {
+        const s = get();
+        const existingExp = new Set(s.expenses.map((e) => e.id));
+        const existingDoc = new Set(s.docs.map((d) => d.id));
+        const newExp = p.expenses.filter((e) => !existingExp.has(e.id));
+        const newDocs = p.docs.filter((d) => !existingDoc.has(d.id));
+        const catNames = new Set(s.expenseCategories);
+        for (const c of p.newExpenseCategories) catNames.add(c);
+        const catalogNames = new Set(s.catalog.map((c) => c.name.toLowerCase()));
+        const addedCatalog = p.newCatalogItems.filter(
+          (c) => !catalogNames.has(c.name.toLowerCase()),
+        );
+        set({
+          expenses: [...newExp, ...s.expenses],
+          docs: [...newDocs, ...s.docs],
+          expenseCategories: Array.from(catNames),
+          catalog: [...s.catalog, ...addedCatalog],
+          billing: {
+            ...s.billing,
+            nextInvoiceNo: Math.max(s.billing.nextInvoiceNo, p.maxInvoiceNo + 1),
+          },
+        });
+        return { expenses: newExp.length, docs: newDocs.length };
+      },
+      clearHistorical: () => {
+        const s = get();
+        const expBefore = s.expenses.length;
+        const docBefore = s.docs.length;
+        const expenses = s.expenses.filter((e) => !e.id.startsWith("hist-"));
+        const docs = s.docs.filter((d) => !d.id.startsWith("hist-"));
+        const catalog = s.catalog.filter((c) => !c.id.startsWith("hist-cat-"));
+        set({ expenses, docs, catalog });
+        return { expenses: expBefore - expenses.length, docs: docBefore - docs.length };
+      },
     }),
     { name: "moove-store-v1" },
   ),

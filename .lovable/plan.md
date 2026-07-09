@@ -1,57 +1,76 @@
-## Four small improvements
+## Historical data import from `MOOVE_Staat.xlsx`
 
-### 1. Auto-archive old quotes (Home)
-- Add `archived?: boolean` to `Doc` in `src/lib/store.ts`.
-- On Home load, sweep once: any quote with `type === "quote"`, `status` in `{draft, sent}`, and `createdAt` older than 10 days → set `archived: true` (via `upsertDoc`). Accepted quotes and invoices are never touched.
-- Home lists filter out `archived === true`. Planner + Results untouched (accepted quotes still show).
-- Small "Archived (n)" link at the bottom of Home → shows the archived list in-page with an "Unarchive" button per row.
+### Source structure (confirmed)
 
-### 2. Quote validity note on PDF
-- In `src/lib/pdf.ts`, for `type === "quote"` add a line under the totals block: **"This quote is valid for 7 days from the date of issue."**
-- Also render "Valid until: {createdAt + 7 days, formatted}" beside it.
-- No change to invoices.
+9 monthly sheets: `Des2024`, `Jan2025`, `Feb2025`, `March2025 to 15Apr2025`, `15May2025`, `15Jun2025`, `15Jul2025`, `15Aug2025` (+ Instructions / Key Metrics settings).
 
-### 3. Non-negative numeric inputs on Quote/Invoice
-- In `src/routes/doc.$id.tsx` every numeric input for qty, price, deposit %, distance km:
-  - `min={0}` on the input,
-  - `onChange` clamps `Math.max(0, Number(v))`,
-  - `inputMode="decimal"` retained (already there).
-- Apply the same clamp to the new tumbler component (below) and to deposit quick-chips.
+Each monthly sheet, from row 12 downward, columns C–J:
 
-### 4. Inline horizontal tumbler for line-item qty & price
-New component `src/components/app/InlineTumbler.tsx`:
-- Renders the current value large in the middle with faint neighbouring values on either side (ticks style, MOOVE-Fit vibe).
-- Swipe left/right (pointer events) to change the value; snaps to `step` (qty: 1, price: configurable — default R10 with fine mode R1 on long-press).
-- Tap the number → opens a keypad drawer (existing `Input`) for exact entry. Long-press → toggles fine/coarse step.
-- Clamped to `min = 0`, optional `max`.
-- Wired into the line-item rows in `doc.$id.tsx`: qty uses step 1; price uses step 10 (fine step 1). Existing plain inputs become the fallback shown inside the tap-to-edit drawer.
-- Purely pointer + touch events, no external lib. Haptic `navigator.vibrate(5)` on step change when available.
+| Col | Field |
+|---|---|
+| B | invoice # (on some deposit rows) |
+| C | Datum (date) |
+| D | Tipe (`Kaart` / `Kontant`) |
+| E | Beskrywing (description) |
+| F | Kategorie (Afrikaans) |
+| G | Betaling (money out → expense) |
+| H | Deposit (money in → income) |
+| I | Balans |
+| J | PAID flag (`y` = cleared) |
 
-### 5. Density presets (Settings → Appearance)
-- Add a new "Appearance" tab in `src/routes/settings.tsx` with three buttons: **Compact / Normal / Comfortable**.
-- Persist `density: "compact" | "normal" | "comfortable"` in the zustand store.
-- Apply by setting `data-density` on `<html>` in `__root.tsx` (and reading the persisted value on mount).
-- In `src/styles.css` add:
-  ```
-  :root { font-size: 16px; }
-  html[data-density="compact"]      { font-size: 13px; }
-  html[data-density="normal"]       { font-size: 15px; }
-  html[data-density="comfortable"]  { font-size: 17px; }
-  ```
-  Because Tailwind's spacing/sizing is rem-based, this rescales spacing + type together → real density change, not just fonts.
-- Also drop the default base to 15px so the app is denser out of the box (Normal preset).
+### Category mapping (AF → EN)
 
-### Files touched
-- edit `src/lib/store.ts` (archived field, density state)
-- edit `src/routes/index.tsx` (auto-archive sweep, archived list)
-- edit `src/lib/pdf.ts` (quote validity)
-- edit `src/routes/doc.$id.tsx` (non-negative clamps, use InlineTumbler for qty/price)
-- create `src/components/app/InlineTumbler.tsx`
-- edit `src/routes/settings.tsx` (Appearance tab)
-- edit `src/routes/__root.tsx` (apply data-density)
-- edit `src/styles.css` (base font-size + density variants)
+**Expenses:**
+`Trokkie Paaiement`→Truck Payment · `Diesel`→Diesel/Fuel · `Arbeid`/`Salaris`→Labour · `Data/Airtime`→Data/Airtime · `Onderhoud`→Maintenance · `Bate Aankope`→Asset Purchases · `Entertainment`→Entertainment · `Food`→Food · `Advertising`→Advertising · `Sand/Klip`→Sand/Stone/Trailer Hire · `Versekering`→**Insurance** (new) · `Bank Fooi`→**Bank Fees** (new)
+
+**Income (revenue lines on Deposit rows):**
+`Trek Meubels` · `Tuin Vullis` · `Bou Rommel` · `Sand/Klip Aflewer` — each becomes a catalog service and an invoice line.
+
+Unmapped/blank categories → `Other` (Afrikaans name kept in note).
+
+### Deliverables
+
+1. **Parser script** (build-time, run once) — `scripts/parse-moove-staat.ts`
+   - Reads `/mnt/user-uploads/MOOVE_Staat.xlsx`, iterates every monthly sheet, walks rows from 12 to end while column C holds a date.
+   - Rows with `Betaling > 0` → **Expense** object (stable id `hist-{sheet}-{row}`).
+   - Rows with `Deposit > 0` → **Doc** object: type `invoice`, status `paid`, one line item (description = category, qty 1, price = deposit), paidAt = row date, number = `INV-{invnum}` if col B present else `INV-H{sheet}-{row}`, customer name = description.
+   - Writes `src/data/historical.json` (checked in, ~200 KB estimated).
+
+2. **Bundled JSON** — `src/data/historical.json`
+   ```
+   { "expenses": Expense[], "docs": Doc[], "newExpenseCategories": ["Insurance","Bank Fees"], "newCatalogItems": CatalogItem[] }
+   ```
+   Every item carries a stable `id` prefixed `hist-` so re-import is idempotent.
+
+3. **Store additions** — `src/lib/store.ts`
+   - New action `importHistorical(payload)` that:
+     - Adds any `newExpenseCategories` not already present.
+     - Adds any `newCatalogItems` not already present (dedupe by name).
+     - Merges `expenses` by id (skip existing).
+     - Merges `docs` by id (skip existing).
+     - Bumps `nextInvoiceNo` past the highest historical number.
+   - New action `clearHistorical()` — removes any expense or doc whose id starts with `hist-`, plus imported categories/catalog items that are unused.
+
+4. **Settings UI** — new "Data" section in `src/routes/settings.tsx`
+   - **Import historical data** button → runs `importHistorical`, toast with counts (`Imported 312 expenses, 148 invoices`).
+   - **Clear imported data** button (destructive, confirm) → runs `clearHistorical`.
+   - Shows current counts of `hist-` records so user sees state.
+
+### Data flow after import
+
+- Home dashboard stat cards (Outstanding / Paid this month / Quotes / Invoices) automatically reflect imported invoices.
+- Results page revenue / expenses / net profit will populate historically for Dec 2024 – Aug 2025.
+- Expenses page groups by month; existing month navigator works unchanged.
+- Auto-archive (10-day rule) will hide these old invoices from Home except accepted/paid ones; paid invoices stay visible in Results.
 
 ### Out of scope
-- No animated iOS-wheel picker (you chose inline horizontal tumbler).
-- No per-user cloud sync of density.
-- No changes to invoice PDF or archived flow for invoices.
+
+- Balance-sheet reconciliation ("Bank Balaans", "Kontant" counts) — the app has no bank-balance model.
+- Cash-counting tumbler / "CASH COUNT" columns.
+- Fixed-expense recurring schedules from the right-hand summary blocks.
+- Ongoing sync — this is a one-time import from the shipped snapshot.
+
+### Files touched
+
+- **Add**: `scripts/parse-moove-staat.ts`, `src/data/historical.json`
+- **Edit**: `src/lib/store.ts` (2 actions), `src/routes/settings.tsx` (Data section)
