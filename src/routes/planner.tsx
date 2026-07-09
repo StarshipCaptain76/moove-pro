@@ -47,7 +47,9 @@ function PlannerPage() {
   const jobs = useMemo(() => docs.filter((d) => d.status === "accepted" || d.status === "paid"), [docs]);
   const byDay = (iso: string) =>
     jobs.filter((d) => d.scheduledDate === iso).sort((a, b) => (a.dayOrder ?? 0) - (b.dayOrder ?? 0));
-  const unscheduled = jobs.filter((d) => !d.scheduledDate);
+  // Paid docs without a scheduled date are historical / closed jobs — don't
+  // surface them as "unscheduled". Only accepted jobs still need scheduling.
+  const unscheduled = jobs.filter((d) => !d.scheduledDate && d.status === "accepted");
 
   const onDragEnd = (e: DragEndEvent) => {
     const id = String(e.active.id);
