@@ -4,22 +4,45 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useStore, docTotals, fmtMoney, type Doc } from "@/lib/store";
 import { ChevronRight, FileText, Truck } from "lucide-react";
-import { format } from "date-fns";
+import { format, differenceInCalendarDays } from "date-fns";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({ component: Index });
 
 function Index() {
-  const { docs, billing, company } = useStore();
+  const { docs, billing, company, upsertDoc } = useStore();
+
+  // Auto-archive: quotes older than 10 days that are still draft/sent.
+  useEffect(() => {
+    const now = new Date();
+    docs.forEach((d) => {
+      if (
+        d.type === "quote" &&
+        !d.archived &&
+        (d.status === "draft" || d.status === "sent") &&
+        differenceInCalendarDays(now, new Date(d.createdAt)) > 10
+      ) {
+        upsertDoc({ ...d, archived: true });
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const visible = docs.filter((d) => !d.archived);
+  const archived = docs.filter((d) => d.archived);
+  const [showArchived, setShowArchived] = useState(false);
+
   const today = format(new Date(), "yyyy-MM-dd");
-  const todayJobs = docs.filter((d) => d.scheduledDate === today);
+  const todayJobs = visible.filter((d) => d.scheduledDate === today);
 
   const stats = {
-    quotes: docs.filter((d) => d.type === "quote").length,
-    invoices: docs.filter((d) => d.type === "invoice").length,
-    outstanding: docs
+    quotes: visible.filter((d) => d.type === "quote").length,
+    invoices: visible.filter((d) => d.type === "invoice").length,
+    outstanding: visible
       .filter((d) => d.type === "invoice" && d.status !== "paid")
       .reduce((s, d) => s + docTotals(d, billing.vatPct).balance, 0),
-    paidThisMonth: docs
+    paidThisMonth: visible
       .filter((d) => d.status === "paid" && d.paidAt?.startsWith(format(new Date(), "yyyy-MM")))
       .reduce((s, d) => s + docTotals(d, billing.vatPct).total, 0),
   };
@@ -52,14 +75,50 @@ function Index() {
             )}
           </TabsContent>
           <TabsContent value="recent" className="mt-0">
-            {docs.length === 0 ? (
+            {visible.length === 0 ? (
               <Empty>Tap + to create your first quote or invoice.</Empty>
             ) : (
-              <List docs={docs.slice(0, 15)} currency={billing.currency} vat={billing.vatPct} />
+              <List docs={visible.slice(0, 15)} currency={billing.currency} vat={billing.vatPct} />
             )}
           </TabsContent>
         </Tabs>
       </Card>
+
+      {archived.length > 0 && (
+        <div className="mt-4">
+          <button
+            className="text-xs text-muted-foreground underline"
+            onClick={() => setShowArchived((v) => !v)}
+          >
+            {showArchived ? "Hide" : "Show"} archived quotes ({archived.length})
+          </button>
+          {showArchived && (
+            <Card className="p-3 mt-2">
+              <ul className="divide-y">
+                {archived.map((d) => (
+                  <li key={d.id} className="flex items-center gap-2 py-2">
+                    <Link
+                      to="/doc/$id"
+                      params={{ id: d.id }}
+                      className="min-w-0 flex-1"
+                    >
+                      <div className="text-xs font-mono text-muted-foreground">{d.number}</div>
+                      <div className="font-medium truncate">{d.customer.name || "—"}</div>
+                    </Link>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => upsertDoc({ ...d, archived: false })}
+                    >
+                      Unarchive
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+        </div>
+      )}
     </Shell>
   );
 }
