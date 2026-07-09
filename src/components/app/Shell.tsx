@@ -4,12 +4,14 @@ import logoAsset from "@/assets/moove-logo.png.asset.json";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Calendar, BarChart3, Settings,
-  Cloud, CloudOff, Link2, Check, Plus, FileText, Receipt, Wallet,
+  Cloud, CloudOff, Link2, Check, Plus, FileText, Receipt, Wallet, LogIn, LogOut, User,
 } from "lucide-react";
 import { initSync, subscribeSync, getShareLink } from "@/lib/sync";
 import { useStore, newId, type Doc } from "@/lib/store";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const nav = [
   { to: "/", label: "Home", icon: LayoutDashboard },
@@ -47,6 +49,7 @@ export function Shell({ children }: { children: ReactNode }) {
             })}
           </nav>
           <div className="ml-auto md:ml-0"><SyncBadge /></div>
+          <AuthButton />
         </div>
       </header>
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-6">
@@ -158,8 +161,8 @@ function MobileTabBar() {
 }
 
 function SyncBadge() {
-  const [s, setS] = useState<{ status: string; workspaceId: string | null; error?: string }>({
-    status: "idle", workspaceId: null,
+  const [s, setS] = useState<{ status: string; workspaceId: string | null; authed: boolean; error?: string }>({
+    status: "idle", workspaceId: null, authed: false,
   });
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -171,7 +174,10 @@ function SyncBadge() {
   const Icon = s.status === "error" ? CloudOff : Cloud;
   const copy = async () => {
     const link = getShareLink();
-    if (!link) return;
+    if (!link) {
+      if (s.authed) toast.info("You're signed in — data syncs automatically across devices.");
+      return;
+    }
     await navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
@@ -179,14 +185,51 @@ function SyncBadge() {
   return (
     <button
       onClick={copy}
-      title={s.error || (s.workspaceId ? "Copy sync link" : "Connecting…")}
+      title={s.error || (s.authed ? "Signed in — auto-syncing" : s.workspaceId ? "Copy sync link" : "Connecting…")}
       className={cn(
         "px-2 py-1.5 rounded flex items-center gap-1.5 text-xs font-medium transition-colors",
         ok ? "bg-white/10 hover:bg-white/20" : "bg-destructive/20 hover:bg-destructive/30",
       )}
     >
       <Icon className="h-3.5 w-3.5" />
-      {s.workspaceId && (copied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />)}
+      {s.workspaceId && !s.authed && (copied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />)}
+      {s.authed && <User className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
+function AuthButton() {
+  const [email, setEmail] = useState<string | null>(null);
+  const navigate = useNavigate();
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setEmail(session?.user.email ?? null);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  if (!email) {
+    return (
+      <Link
+        to="/auth"
+        className="ml-1 px-2 py-1.5 rounded flex items-center gap-1.5 text-xs font-medium bg-white/10 hover:bg-white/20"
+        title="Sign in"
+      >
+        <LogIn className="h-3.5 w-3.5" />
+      </Link>
+    );
+  }
+  return (
+    <button
+      onClick={async () => {
+        await supabase.auth.signOut();
+        toast.success("Signed out");
+        navigate({ to: "/auth" });
+      }}
+      title={`Signed in as ${email} — click to sign out`}
+      className="ml-1 px-2 py-1.5 rounded flex items-center gap-1.5 text-xs font-medium bg-white/10 hover:bg-white/20"
+    >
+      <LogOut className="h-3.5 w-3.5" />
     </button>
   );
 }

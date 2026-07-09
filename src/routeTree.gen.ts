@@ -13,6 +13,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as ExpensesRouteImport } from './routes/expenses'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocIdRouteImport } from './routes/doc.$id'
 import { Route as DocRouteImport } from './routes/doc.'
@@ -37,6 +38,11 @@ const ExpensesRoute = ExpensesRouteImport.update({
   path: '/expenses',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -55,6 +61,7 @@ const DocRoute = DocRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/expenses': typeof ExpensesRoute
   '/planner': typeof PlannerRoute
   '/results': typeof ResultsRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/expenses': typeof ExpensesRoute
   '/planner': typeof PlannerRoute
   '/results': typeof ResultsRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/expenses': typeof ExpensesRoute
   '/planner': typeof PlannerRoute
   '/results': typeof ResultsRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/expenses'
     | '/planner'
     | '/results'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/expenses'
     | '/planner'
     | '/results'
@@ -103,6 +114,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/auth'
     | '/expenses'
     | '/planner'
     | '/results'
@@ -113,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   ExpensesRoute: typeof ExpensesRoute
   PlannerRoute: typeof PlannerRoute
   ResultsRoute: typeof ResultsRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExpensesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -177,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   ExpensesRoute: ExpensesRoute,
   PlannerRoute: PlannerRoute,
   ResultsRoute: ResultsRoute,
