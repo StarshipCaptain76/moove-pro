@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useStore, newId, type Unit } from "@/lib/store";
-import { Trash2, Plus, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { Trash2, Plus, Search, ChevronDown, ChevronUp, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/store";
@@ -19,10 +19,11 @@ function SettingsPage() {
     <Shell>
       <h1 className="font-display text-4xl sm:text-5xl tracking-wide mb-4">SETTINGS</h1>
       <Tabs defaultValue="company">
-        <TabsList className="mb-4 w-full grid grid-cols-4">
+        <TabsList className="mb-4 w-full grid grid-cols-5">
           <TabsTrigger value="company">Company</TabsTrigger>
           <TabsTrigger value="banking">Banking</TabsTrigger>
           <TabsTrigger value="catalog">Catalog</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
         </TabsList>
 
@@ -54,6 +55,10 @@ function SettingsPage() {
           <CatalogEditor />
         </TabsContent>
 
+        <TabsContent value="expenses">
+          <ExpenseCategoriesEditor />
+        </TabsContent>
+
         <TabsContent value="billing">
           <Card className="p-4 sm:p-6 grid gap-3 max-w-2xl">
             <NumField label="Rate per KM" v={s.billing.ratePerKm} on={(v) => s.setBilling({ ...s.billing, ratePerKm: v })} />
@@ -71,6 +76,92 @@ function SettingsPage() {
         </TabsContent>
       </Tabs>
     </Shell>
+  );
+}
+
+function ExpenseCategoriesEditor() {
+  const { expenseCategories, addExpenseCategory, renameExpenseCategory, deleteExpenseCategory } = useStore();
+  const [newName, setNewName] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState("");
+
+  const sorted = useMemo(
+    () => [...expenseCategories].sort((a, b) => a.localeCompare(b)),
+    [expenseCategories],
+  );
+
+  const add = () => {
+    const n = newName.trim();
+    if (!n) return;
+    addExpenseCategory(n);
+    setNewName("");
+  };
+
+  return (
+    <Card className="p-4 sm:p-6 max-w-2xl">
+      <div className="flex gap-2 mb-4">
+        <Input
+          placeholder="New category…"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          className="h-11"
+        />
+        <Button onClick={add} className="shrink-0">
+          <Plus className="h-4 w-4 mr-1" /> Add
+        </Button>
+      </div>
+
+      <ul className="divide-y rounded-md border">
+        {sorted.map((c) => {
+          const isEdit = editing === c;
+          return (
+            <li key={c} className="flex items-center gap-2 px-3 py-2 bg-card">
+              {isEdit ? (
+                <>
+                  <Input
+                    autoFocus
+                    value={editVal}
+                    onChange={(e) => setEditVal(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        renameExpenseCategory(c, editVal);
+                        setEditing(null);
+                      }
+                      if (e.key === "Escape") setEditing(null);
+                    }}
+                    className="h-10"
+                  />
+                  <Button size="icon" variant="ghost" onClick={() => { renameExpenseCategory(c, editVal); setEditing(null); }}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => setEditing(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="flex-1 text-left font-medium"
+                    onClick={() => { setEditing(c); setEditVal(c); }}
+                  >
+                    {c}
+                  </button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => deleteExpenseCategory(c)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
   );
 }
 
