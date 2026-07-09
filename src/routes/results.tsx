@@ -64,10 +64,23 @@ function ResultsPage() {
   const sumRev = (arr: Doc[]) => arr.reduce((s, d) => s + docTotals(d, billing.vatPct).total, 0);
   const sumExp = (arr: Expense[]) => arr.reduce((s, e) => s + (e.amount || 0), 0);
 
+  // "Owner draw" / personal-use categories — treated as salary the owner takes
+  // out of the business rather than a cost of doing business. Gross profit
+  // excludes these; the trend chart overlays them on top of revenue.
+  const isSalaryCat = (c: string) => {
+    const n = (c || "").toLowerCase();
+    return /salary|wage|owner|drawing|food|grocer|restaur|entertain|personal|househ|leisure/.test(n);
+  };
+  const sumSalary = (arr: Expense[]) => arr.filter((e) => isSalaryCat(e.category)).reduce((s, e) => s + (e.amount || 0), 0);
+
   const revenue = sumRev(paid);
   const revenuePrev = sumRev(paidPrev);
   const totalExp = sumExp(exp);
   const totalExpPrev = sumExp(expPrev);
+  const salary = sumSalary(exp);
+  const salaryPrev = sumSalary(expPrev);
+  const grossProfit = revenue - (totalExp - salary);
+  const grossProfitPrev = revenuePrev - (totalExpPrev - salaryPrev);
   const net = revenue - totalExp;
   const netPrev = revenuePrev - totalExpPrev;
   const margin = revenue > 0 ? (net / revenue) * 100 : 0;
@@ -106,7 +119,8 @@ function ResultsPage() {
     const key = bucketKey(b);
     const r = paid.filter((d) => d.paidAt?.startsWith(key)).reduce((s, d) => s + docTotals(d, billing.vatPct).total, 0);
     const e = exp.filter((x) => x.date.startsWith(key)).reduce((s, x) => s + (x.amount || 0), 0);
-    return { label: bucketLabel(b), Revenue: Math.round(r), Expenses: Math.round(e), Net: Math.round(r - e) };
+    const s = exp.filter((x) => x.date.startsWith(key) && isSalaryCat(x.category)).reduce((a, x) => a + (x.amount || 0), 0);
+    return { label: bucketLabel(b), Revenue: Math.round(r), Expenses: Math.round(e), Salary: Math.round(s), Net: Math.round(r - e) };
   }), [buckets, paid, exp, billing.vatPct, bucket]);
 
   const byMethod = useMemo(() => {
@@ -205,6 +219,7 @@ function ResultsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-3">
         <Stat label="Revenue" v={fmtMoney(revenue, billing.currency)} delta={delta(revenue, revenuePrev)} />
         <Stat label="Expenses" v={fmtMoney(totalExp, billing.currency)} delta={delta(totalExp, totalExpPrev)} invert />
+        <Stat label="Gross Profit" v={fmtMoney(grossProfit, billing.currency)} delta={delta(grossProfit, grossProfitPrev)} sub="excl. salary/personal" />
         <Stat label="Net Profit" v={fmtMoney(net, billing.currency)} delta={delta(net, netPrev)} />
         <Stat label="Margin" v={`${margin.toFixed(1)}%`} delta={delta(margin, marginPrev, true)} />
       </div>
@@ -218,13 +233,15 @@ function ResultsPage() {
       <div className="space-y-3">
         <ChartCard title={`Revenue trend (${bucket === "day" ? "daily" : bucket === "month" ? "monthly" : "yearly"})`}>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={cashflow} margin={{ left: -20, right: 8 }}>
+            <ComposedChart data={cashflow} margin={{ left: -20, right: 8 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v: number) => fmtMoney(v, billing.currency)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="Revenue" fill="#E11D2E" />
-            </BarChart>
+              <Line dataKey="Salary" stroke="#0A0A0A" strokeWidth={2} dot={{ r: 3 }} />
+            </ComposedChart>
           </ResponsiveContainer>
         </ChartCard>
 
