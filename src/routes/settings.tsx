@@ -10,6 +10,7 @@ import { Trash2, Plus, Search, ChevronDown, ChevronUp, Check, X } from "lucide-r
 import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/store";
+import historical from "@/data/historical.json";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
@@ -18,13 +19,14 @@ function SettingsPage() {
   return (
     <Shell>
       <Tabs defaultValue="company">
-        <TabsList className="mb-4 w-full grid grid-cols-6">
+        <TabsList className="mb-4 w-full grid grid-cols-7">
           <TabsTrigger value="company">Company</TabsTrigger>
           <TabsTrigger value="banking">Banking</TabsTrigger>
           <TabsTrigger value="catalog">Catalog</TabsTrigger>
           <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="appearance">Display</TabsTrigger>
+          <TabsTrigger value="data">Data</TabsTrigger>
         </TabsList>
 
         <TabsContent value="company">
@@ -78,8 +80,68 @@ function SettingsPage() {
         <TabsContent value="appearance">
           <AppearanceEditor />
         </TabsContent>
+
+        <TabsContent value="data">
+          <DataEditor />
+        </TabsContent>
       </Tabs>
     </Shell>
+  );
+}
+
+function DataEditor() {
+  const { expenses, docs, importHistorical, clearHistorical } = useStore();
+  const histExp = expenses.filter((e) => e.id.startsWith("hist-")).length;
+  const histDocs = docs.filter((d) => d.id.startsWith("hist-")).length;
+  const [confirming, setConfirming] = useState(false);
+
+  const doImport = () => {
+    const r = importHistorical(historical as Parameters<typeof importHistorical>[0]);
+    toast.success(`Imported ${r.expenses} expenses, ${r.docs} invoices`);
+  };
+  const doClear = () => {
+    const r = clearHistorical();
+    toast.success(`Removed ${r.expenses} expenses, ${r.docs} invoices`);
+    setConfirming(false);
+  };
+
+  return (
+    <Card className="p-4 sm:p-6 max-w-2xl grid gap-4">
+      <div>
+        <div className="font-semibold mb-1">Historical data (MOOVE Staat)</div>
+        <p className="text-xs text-muted-foreground">
+          Import Dec 2024 – Aug 2025 ledger from the MOOVE bookkeeping sheet.
+          Includes {(historical as any).expenses.length} expenses and{" "}
+          {(historical as any).docs.length} paid invoices. Re-running the import is safe —
+          existing entries are skipped by ID.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded border p-2">
+          <div className="text-xs text-muted-foreground">Imported expenses</div>
+          <div className="font-display text-2xl">{histExp}</div>
+        </div>
+        <div className="rounded border p-2">
+          <div className="text-xs text-muted-foreground">Imported invoices</div>
+          <div className="font-display text-2xl">{histDocs}</div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={doImport}>Import historical data</Button>
+        {confirming ? (
+          <>
+            <Button variant="destructive" onClick={doClear}>Confirm clear</Button>
+            <Button variant="ghost" onClick={() => setConfirming(false)}>Cancel</Button>
+          </>
+        ) : (
+          <Button variant="outline" onClick={() => setConfirming(true)} disabled={histExp + histDocs === 0}>
+            Clear imported data
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }
 
