@@ -19,18 +19,21 @@ export type Database = {
           data: Json
           id: string
           owner_token: string
+          owner_user_id: string | null
           updated_at: string
         }
         Insert: {
           data?: Json
           id?: string
           owner_token?: string
+          owner_user_id?: string | null
           updated_at?: string
         }
         Update: {
           data?: Json
           id?: string
           owner_token?: string
+          owner_user_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -40,6 +43,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_workspace: {
+        Args: { p_id: string; p_token: string }
+        Returns: boolean
+      }
       create_workspace: {
         Args: { p_data: Json }
         Returns: {
@@ -47,7 +54,15 @@ export type Database = {
           owner_token: string
         }[]
       }
+      get_my_workspace: {
+        Args: never
+        Returns: {
+          data: Json
+          id: string
+        }[]
+      }
       get_workspace: { Args: { p_id: string; p_token: string }; Returns: Json }
+      save_my_workspace: { Args: { p_data: Json }; Returns: boolean }
       update_workspace: {
         Args: { p_data: Json; p_id: string; p_token: string }
         Returns: boolean
