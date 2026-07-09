@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/store";
 import historical from "@/data/historical.json";
+import { InlineTumbler } from "@/components/app/InlineTumbler";
+import { Slider } from "@/components/ui/slider";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
@@ -63,15 +65,15 @@ function SettingsPage() {
 
         <TabsContent value="billing">
           <Card className="p-4 sm:p-6 grid gap-3 max-w-2xl">
-            <NumField label="Rate per KM" v={s.billing.ratePerKm} on={(v) => s.setBilling({ ...s.billing, ratePerKm: v })} />
-            <NumField label="Base callout fee" v={s.billing.baseCallout} on={(v) => s.setBilling({ ...s.billing, baseCallout: v })} />
-            <NumField label="Default deposit %" v={s.billing.defaultDepositPct} on={(v) => s.setBilling({ ...s.billing, defaultDepositPct: v })} />
-            <NumField label="VAT %" v={s.billing.vatPct} on={(v) => s.setBilling({ ...s.billing, vatPct: v })} />
+            <TumblerField label="Rate per KM" v={s.billing.ratePerKm} on={(v) => s.setBilling({ ...s.billing, ratePerKm: v })} step={1} fineStep={0.5} prefix={`${s.billing.currency} `} />
+            <TumblerField label="Base callout fee" v={s.billing.baseCallout} on={(v) => s.setBilling({ ...s.billing, baseCallout: v })} step={50} fineStep={10} prefix={`${s.billing.currency} `} />
+            <PctSlider label="Default deposit" v={s.billing.defaultDepositPct} on={(v) => s.setBilling({ ...s.billing, defaultDepositPct: v })} />
+            <PctSlider label="VAT" v={s.billing.vatPct} on={(v) => s.setBilling({ ...s.billing, vatPct: v })} />
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Quote prefix</Label><Input className="h-11" value={s.billing.quotePrefix} onChange={(e) => s.setBilling({ ...s.billing, quotePrefix: e.target.value })} /></div>
               <div><Label>Invoice prefix</Label><Input className="h-11" value={s.billing.invoicePrefix} onChange={(e) => s.setBilling({ ...s.billing, invoicePrefix: e.target.value })} /></div>
-              <NumField label="Next quote #" v={s.billing.nextQuoteNo} on={(v) => s.setBilling({ ...s.billing, nextQuoteNo: v })} />
-              <NumField label="Next invoice #" v={s.billing.nextInvoiceNo} on={(v) => s.setBilling({ ...s.billing, nextInvoiceNo: v })} />
+              <TumblerField label="Next quote #" v={s.billing.nextQuoteNo} on={(v) => s.setBilling({ ...s.billing, nextQuoteNo: v })} step={1} />
+              <TumblerField label="Next invoice #" v={s.billing.nextInvoiceNo} on={(v) => s.setBilling({ ...s.billing, nextInvoiceNo: v })} step={1} />
             </div>
             <Button onClick={() => toast.success("Saved")} className="w-fit">Save</Button>
           </Card>
@@ -271,6 +273,29 @@ function NumField({ label, v, on }: { label: string; v: number; on: (n: number) 
     <div>
       <Label>{label}</Label>
       <Input type="number" inputMode="decimal" className="h-11" value={v} onChange={(e) => on(Number(e.target.value))} />
+    </div>
+  );
+}
+
+function TumblerField({
+  label, v, on, step, fineStep, prefix,
+}: { label: string; v: number; on: (n: number) => void; step: number; fineStep?: number; prefix?: string }) {
+  return (
+    <div>
+      <Label className="mb-1 block">{label}</Label>
+      <InlineTumbler value={v} onChange={on} step={step} fineStep={fineStep} min={0} prefix={prefix} label={label} />
+    </div>
+  );
+}
+
+function PctSlider({ label, v, on }: { label: string; v: number; on: (n: number) => void }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <Label>{label}</Label>
+        <span className="font-display text-lg tabular-nums">{v}%</span>
+      </div>
+      <Slider value={[v]} min={0} max={100} step={1} onValueChange={([n]) => on(n)} className="py-2" />
     </div>
   );
 }
