@@ -59,7 +59,10 @@ function SyncBadge() {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     initSync();
-    return subscribeSync(setS);
+    const unsub = subscribeSync(setS);
+    return () => {
+      unsub();
+    };
   }, []);
   const ok = s.status === "synced" || s.status === "syncing";
   const Icon = s.status === "error" ? CloudOff : Cloud;
