@@ -17,9 +17,9 @@ function SettingsPage() {
   const s = useStore();
   return (
     <Shell>
-      <h1 className="font-display text-5xl tracking-wide mb-6">SETTINGS</h1>
+      <h1 className="font-display text-4xl sm:text-5xl tracking-wide mb-4">SETTINGS</h1>
       <Tabs defaultValue="company">
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 w-full grid grid-cols-4">
           <TabsTrigger value="company">Company</TabsTrigger>
           <TabsTrigger value="banking">Banking</TabsTrigger>
           <TabsTrigger value="catalog">Catalog</TabsTrigger>
@@ -27,11 +27,11 @@ function SettingsPage() {
         </TabsList>
 
         <TabsContent value="company">
-          <Card className="p-6 grid gap-3 max-w-2xl">
+          <Card className="p-4 sm:p-6 grid gap-3 max-w-2xl">
             {(["name","tagline","address","phone","email"] as const).map((k) => (
               <div key={k}>
                 <Label className="capitalize">{k}</Label>
-                <Input value={s.company[k] ?? ""} onChange={(e) => s.setCompany({ ...s.company, [k]: e.target.value })} />
+                <Input className="h-11" value={s.company[k] ?? ""} onChange={(e) => s.setCompany({ ...s.company, [k]: e.target.value })} />
               </div>
             ))}
             <Button onClick={() => toast.success("Saved")} className="w-fit">Save</Button>
@@ -39,11 +39,11 @@ function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="banking">
-          <Card className="p-6 grid gap-3 max-w-2xl">
+          <Card className="p-4 sm:p-6 grid gap-3 max-w-2xl">
             {(["accountName","accountNumber","bank","branchCode","branchName","swiftCode"] as const).map((k) => (
               <div key={k}>
                 <Label>{k}</Label>
-                <Input value={s.banking[k]} onChange={(e) => s.setBanking({ ...s.banking, [k]: e.target.value })} />
+                <Input className="h-11" value={s.banking[k]} onChange={(e) => s.setBanking({ ...s.banking, [k]: e.target.value })} />
               </div>
             ))}
             <Button onClick={() => toast.success("Saved")} className="w-fit">Save</Button>
@@ -55,14 +55,14 @@ function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="billing">
-          <Card className="p-6 grid gap-3 max-w-2xl">
+          <Card className="p-4 sm:p-6 grid gap-3 max-w-2xl">
             <NumField label="Rate per KM" v={s.billing.ratePerKm} on={(v) => s.setBilling({ ...s.billing, ratePerKm: v })} />
             <NumField label="Base callout fee" v={s.billing.baseCallout} on={(v) => s.setBilling({ ...s.billing, baseCallout: v })} />
             <NumField label="Default deposit %" v={s.billing.defaultDepositPct} on={(v) => s.setBilling({ ...s.billing, defaultDepositPct: v })} />
             <NumField label="VAT %" v={s.billing.vatPct} on={(v) => s.setBilling({ ...s.billing, vatPct: v })} />
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Quote prefix</Label><Input value={s.billing.quotePrefix} onChange={(e) => s.setBilling({ ...s.billing, quotePrefix: e.target.value })} /></div>
-              <div><Label>Invoice prefix</Label><Input value={s.billing.invoicePrefix} onChange={(e) => s.setBilling({ ...s.billing, invoicePrefix: e.target.value })} /></div>
+              <div><Label>Quote prefix</Label><Input className="h-11" value={s.billing.quotePrefix} onChange={(e) => s.setBilling({ ...s.billing, quotePrefix: e.target.value })} /></div>
+              <div><Label>Invoice prefix</Label><Input className="h-11" value={s.billing.invoicePrefix} onChange={(e) => s.setBilling({ ...s.billing, invoicePrefix: e.target.value })} /></div>
               <NumField label="Next quote #" v={s.billing.nextQuoteNo} on={(v) => s.setBilling({ ...s.billing, nextQuoteNo: v })} />
               <NumField label="Next invoice #" v={s.billing.nextInvoiceNo} on={(v) => s.setBilling({ ...s.billing, nextInvoiceNo: v })} />
             </div>
@@ -78,7 +78,7 @@ function NumField({ label, v, on }: { label: string; v: number; on: (n: number) 
   return (
     <div>
       <Label>{label}</Label>
-      <Input type="number" value={v} onChange={(e) => on(Number(e.target.value))} />
+      <Input type="number" inputMode="decimal" className="h-11" value={v} onChange={(e) => on(Number(e.target.value))} />
     </div>
   );
 }
