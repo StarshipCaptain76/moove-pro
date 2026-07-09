@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Trash } from "lucide-react";
+import { toast } from "sonner";
 import { placesAutocomplete, placeDetails } from "@/lib/maps.functions";
 
 export interface AddressValue {
@@ -51,6 +52,7 @@ export function AddressAutocomplete({ value, onChange, placeholder, extraButton 
         setOpen(true);
       } catch (e) {
         console.error(e);
+        toast.error("Address search failed");
       } finally {
         setLoading(false);
       }
@@ -69,6 +71,7 @@ export function AddressAutocomplete({ value, onChange, placeholder, extraButton 
       });
     } catch (e) {
       console.error(e);
+      toast.error("Could not load address details");
     }
   };
 
@@ -101,6 +104,9 @@ export function AddressAutocomplete({ value, onChange, placeholder, extraButton 
         )}
         {extraButton}
       </div>
+      {open && q.trim().length > 0 && q.trim().length < 3 && (
+        <div className="mt-1 text-xs text-muted-foreground">Type 3+ characters to search…</div>
+      )}
       {open && (items.length > 0 || loading) && (
         <div className="absolute z-50 mt-1 w-full bg-popover text-popover-foreground border rounded-md shadow-md max-h-72 overflow-auto">
           {loading && <div className="p-2 text-sm text-muted-foreground">Searching…</div>}
