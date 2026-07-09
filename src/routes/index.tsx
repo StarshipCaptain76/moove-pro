@@ -43,7 +43,11 @@ function Index() {
       .filter((d) => d.type === "invoice" && d.status !== "paid")
       .reduce((s, d) => s + docTotals(d, billing.vatPct).balance, 0),
     paidThisMonth: visible
-      .filter((d) => d.status === "paid" && d.paidAt?.startsWith(format(new Date(), "yyyy-MM")))
+      .filter((d) => {
+        if (d.status !== "paid") return false;
+        const stamp = d.paidAt ?? d.createdAt;
+        return stamp?.startsWith(format(new Date(), "yyyy-MM"));
+      })
       .reduce((s, d) => s + docTotals(d, billing.vatPct).total, 0),
   };
 
