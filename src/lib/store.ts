@@ -47,6 +47,9 @@ export interface Doc {
   paidAt?: string;
   fromAddress?: string;
   toAddress?: string;
+  fromCoords?: { lat: number; lng: number };
+  toCoords?: { lat: number; lng: number };
+  distanceKm?: number;
 }
 
 export interface Company {
