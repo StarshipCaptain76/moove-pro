@@ -64,7 +64,7 @@ function Index() {
         <Tabs defaultValue="today">
           <TabsList className="w-full grid grid-cols-2 mb-3">
             <TabsTrigger value="today"><Truck className="h-4 w-4 mr-1.5" />Today ({todayJobs.length})</TabsTrigger>
-            <TabsTrigger value="recent"><FileText className="h-4 w-4 mr-1.5" />Recent</TabsTrigger>
+            <TabsTrigger value="recent"><FileText className="h-4 w-4 mr-1.5" />Recent ({visible.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="today" className="mt-0">
             {todayJobs.length === 0 ? (
