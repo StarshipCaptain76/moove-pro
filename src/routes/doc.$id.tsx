@@ -16,6 +16,7 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { CustomerCombobox } from "@/components/app/CustomerCombobox";
+import { ContactImportButton } from "@/components/app/ContactImportButton";
 import { AddressAutocomplete } from "@/components/app/AddressAutocomplete";
 import { CatalogPicker } from "@/components/app/CatalogPicker";
 import { InlineTumbler } from "@/components/app/InlineTumbler";
@@ -131,7 +132,14 @@ function DocPage() {
             <h2 className="font-semibold mb-3">Customer</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <Label>Name</Label>
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Name</Label>
+                  <ContactImportButton
+                    onPick={(c) =>
+                      upsertDoc({ ...doc, customer: { ...doc.customer, ...c } })
+                    }
+                  />
+                </div>
                 <CustomerCombobox
                   value={doc.customer.name}
                   customers={customers}
