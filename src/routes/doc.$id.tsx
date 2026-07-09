@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Shell } from "@/components/app/Shell";
+import { openWhatsApp } from "@/lib/whatsapp";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,10 +96,9 @@ function DocPage() {
     if (!doc.customer.name) return toast.error("Add customer name first");
     const msg = `Hi ${doc.customer.name},\n\nHere is your ${doc.type} ${doc.number} from ${company.name}.\nTotal: ${fmtMoney(t.total, billing.currency)}\nDeposit (${doc.depositPct}%): ${fmtMoney(t.deposit, billing.currency)}\n\nBanking:\n${banking.bank} • Acc ${banking.accountNumber} • Branch ${banking.branchCode}\nRef: ${doc.number}\n\nThanks!\n${company.name}`;
     if (channel === "wa") {
-      const phone = doc.customer.phone.replace(/[^\d]/g, "");
-      if (!phone) return toast.error("Add customer phone");
-      const p = phone.startsWith("0") ? "27" + phone.slice(1) : phone;
-      window.location.href = `https://wa.me/${p}?text=${encodeURIComponent(msg)}`;
+      if (!doc.customer.phone) return toast.error("Add customer phone");
+      const ok = openWhatsApp(doc.customer.phone, msg);
+      if (!ok) return toast.error("Invalid phone number");
     } else {
       if (!doc.customer.email) return toast.error("Add customer email");
       window.location.href = `mailto:${doc.customer.email}?subject=${encodeURIComponent(`${doc.type === "quote" ? "Quote" : "Invoice"} ${doc.number} from ${company.name}`)}&body=${encodeURIComponent(msg)}`;
