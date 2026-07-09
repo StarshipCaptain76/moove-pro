@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/store";
 import historical from "@/data/historical.json";
+import bankImport from "@/data/bank-import-2026.json";
 import { InlineTumbler } from "@/components/app/InlineTumbler";
 import { Slider } from "@/components/ui/slider";
 
@@ -95,11 +96,17 @@ function DataEditor() {
   const { expenses, docs, importHistorical, clearHistorical } = useStore();
   const histExp = expenses.filter((e) => e.id.startsWith("hist-")).length;
   const histDocs = docs.filter((d) => d.id.startsWith("hist-")).length;
+  const bankExp = expenses.filter((e) => e.id.startsWith("bank-")).length;
+  const bankDocs = docs.filter((d) => d.id.startsWith("bank-")).length;
   const [confirming, setConfirming] = useState(false);
 
   const doImport = () => {
     const r = importHistorical(historical as Parameters<typeof importHistorical>[0]);
     toast.success(`Imported ${r.expenses} expenses, ${r.docs} invoices`);
+  };
+  const doBankImport = () => {
+    const r = importHistorical(bankImport as Parameters<typeof importHistorical>[0]);
+    toast.success(`Imported ${r.expenses} bank expenses, ${r.docs} bank invoices`);
   };
   const doClear = () => {
     const r = clearHistorical();
@@ -108,6 +115,7 @@ function DataEditor() {
   };
 
   return (
+    <div className="max-w-2xl grid gap-4">
     <Card className="p-4 sm:p-6 max-w-2xl grid gap-4">
       <div>
         <div className="font-semibold mb-1">Historical data (MOOVE Staat)</div>
@@ -139,11 +147,36 @@ function DataEditor() {
           </>
         ) : (
           <Button variant="outline" onClick={() => setConfirming(true)} disabled={histExp + histDocs === 0}>
-            Clear imported data
+            Clear all imported data
           </Button>
         )}
       </div>
     </Card>
+    <Card className="p-4 sm:p-6 grid gap-4">
+      <div>
+        <div className="font-semibold mb-1">Bank statements (May – Jul 2026)</div>
+        <p className="text-xs text-muted-foreground">
+          Import {bankImport.expenses.length} expense lines and {bankImport.docs.length} paid
+          invoices from the FNB Business Zero account. Income is allocated across services
+          using the same-month prior-year mix (with 3-month trailing fallback).
+          Re-running is safe — entries dedupe by ID.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded border p-2">
+          <div className="text-xs text-muted-foreground">Bank expenses in store</div>
+          <div className="font-display text-2xl">{bankExp}</div>
+        </div>
+        <div className="rounded border p-2">
+          <div className="text-xs text-muted-foreground">Bank invoices in store</div>
+          <div className="font-display text-2xl">{bankDocs}</div>
+        </div>
+      </div>
+      <div>
+        <Button onClick={doBankImport}>Import bank statements</Button>
+      </div>
+    </Card>
+    </div>
   );
 }
 
