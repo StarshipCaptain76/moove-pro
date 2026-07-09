@@ -64,14 +64,22 @@ function ResultsPage() {
   const sumRev = (arr: Doc[]) => arr.reduce((s, d) => s + docTotals(d, billing.vatPct).total, 0);
   const sumExp = (arr: Expense[]) => arr.reduce((s, e) => s + (e.amount || 0), 0);
 
-  // "Owner draw" / personal-use categories — treated as salary the owner takes
-  // out of the business rather than a cost of doing business. Gross profit
-  // excludes these; the trend chart overlays them on top of revenue.
-  const isSalaryCat = (c: string) => {
-    const n = (c || "").toLowerCase();
-    return /salary|wage|owner|drawing|food|grocer|restaur|entertain|personal|househ|leisure/.test(n);
+  // Owner-draw / personal-use spend — treated as the owner's salary, not a
+  // cost of doing business. Matches against category + vendor + description
+  // because the bank importer buckets many personal items into Other / Labour.
+  const isSalary = (e: Expense) => {
+    const cat = (e.category || "").toLowerCase();
+    const txt = `${e.vendor ?? ""} ${e.description ?? ""}`.toLowerCase();
+    if (/^(food|entertainment|salary|wages?)$/.test(cat)) return true;
+    if (/salary|dylan potgieter|send money.*dylan|owner|drawing|personal/.test(txt)) return true;
+    if (/atm cash|card cashback|geld trek/.test(txt)) return true;
+    if (/beauty|karlien van zyl/.test(txt)) return true;
+    if (/temu/.test(txt)) return true;
+    if (/supermarket|checkers|shoprite|pick n pay|woolworths|spar|tani|ok foods/.test(txt)) return true;
+    if (/restaurant|pub|lounge|bistro|cafe|kelder|seekombuis|plato|puffies|cigar/.test(txt)) return true;
+    return false;
   };
-  const sumSalary = (arr: Expense[]) => arr.filter((e) => isSalaryCat(e.category)).reduce((s, e) => s + (e.amount || 0), 0);
+  const sumSalary = (arr: Expense[]) => arr.filter(isSalary).reduce((s, e) => s + (e.amount || 0), 0);
 
   const revenue = sumRev(paid);
   const revenuePrev = sumRev(paidPrev);
@@ -119,7 +127,7 @@ function ResultsPage() {
     const key = bucketKey(b);
     const r = paid.filter((d) => d.paidAt?.startsWith(key)).reduce((s, d) => s + docTotals(d, billing.vatPct).total, 0);
     const e = exp.filter((x) => x.date.startsWith(key)).reduce((s, x) => s + (x.amount || 0), 0);
-    const s = exp.filter((x) => x.date.startsWith(key) && isSalaryCat(x.category)).reduce((a, x) => a + (x.amount || 0), 0);
+    const s = exp.filter((x) => x.date.startsWith(key) && isSalary(x)).reduce((a, x) => a + (x.amount || 0), 0);
     return { label: bucketLabel(b), Revenue: Math.round(r), Expenses: Math.round(e), Salary: Math.round(s), Net: Math.round(r - e) };
   }), [buckets, paid, exp, billing.vatPct, bucket]);
 

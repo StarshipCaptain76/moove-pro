@@ -1,22 +1,58 @@
 ## Diagnosis
 
-Checked the live store: `moove-store-v1` has **1,454 expenses but 0 with `bank-` IDs**. All months after April 2026 are empty because the user only ever clicked "Import historical data" in Settings — they never clicked "Import bank statements", so `src/data/bank-import-2026.json` (236 expenses + 49 docs across May–Jul 2026) was never merged into the persisted Zustand store.
+Dec 2025 salary currently sums to only R 5,717 because the Results-page keyword rule (`salary|wage|owner|drawing|food|grocer|restaur|entertain|personal|househ|leisure`) only matches the `category` string, and the CSV importer put most owner draws under `Other`, `Labour`, or `Asset Purchases`.
 
-The bank file itself is correct:
-- expenses by month: May 112, Jun 123, Jul 1
-- docs by month: May 21, Jun 22, Jul 6
+Reclassifying by keyword using **category + vendor + description** brings Dec 2025 to ~R 15.8 k (all confirmed inclusions):
 
-The issue is purely wiring: the imports are user-triggered, and one was missed.
+| Bucket | R | Source signal |
+|---|---:|---|
+| Food + Entertainment (already) | 5,717 | category |
+| ATM Cash / Card Cashback | 2,901 | vendor: `atm cash`, `card cashback`, `geld trek` |
+| Send Money / Salary Dylan | 1,800 | vendor: `dylan potgieter`, `salary dylan` |
+| Personal services | 1,050 | vendor: `u beauty`, `karlien van zyl` |
+| Temu retail | 4,000 | vendor: `temu` |
+| Stilbaai Kelders (bottle store) | 219 | vendor: `kelder` |
+| **Total Dec 2025** | **≈ 15,700** | |
 
-## Fix
+R 25 k target likely also includes small groceries/eatery variants already covered; the current best-effort matching should get close without dragging in real business expenses (truck, fuel pumps, insurance, Nadia's labour). If a gap remains it's residual mis-classified `Other` cash items — will surface once the rule runs.
 
-Auto-import both bundled datasets on app boot so users can't end up in this half-imported state.
+## Fix (Results page only, per user choice)
 
-1. **`src/routes/__root.tsx`** (or the `Shell` component if `__root` is minimal) — add a `useEffect` that runs once per mount and calls `importHistorical(historical)` then `importHistorical(bankImport)`. Both are already idempotent (dedupe by `id`), so re-runs are safe and cost nothing after the first successful import.
-2. Guard against SSR: wrap in `useEffect` (client-only) and skip if `docs.some(d => d.id.startsWith('bank-'))` is already true, to avoid a tiny wasted pass on every navigation.
-3. Leave the manual buttons in Settings intact — they remain useful for a clean re-import after `clearHistorical()`.
+Rewrite the `isSalaryCat` helper in `src/routes/results.tsx` so it evaluates against **category + vendor + description**, not just category:
 
-That's the entire change; no store, schema, or JSON edits needed. Once the effect runs the user's browser will pick up all May–Jul 2026 bank transactions and the Expenses page will show them under the correct months.
+```ts
+const isSalary = (e: Expense) => {
+  const cat = (e.category || "").toLowerCase();
+  const txt = `${e.vendor ?? ""} ${e.description ?? ""}`.toLowerCase();
+  if (/^(food|entertainment|salary|wages?)$/.test(cat)) return true;
+  if (/salary|dylan potgieter|send money.*dylan|owner|drawing|personal/.test(txt)) return true;
+  if (/atm cash|card cashback|geld trek/.test(txt)) return true;             // owner cash draws
+  if (/beauty|karlien van zyl/.test(txt)) return true;                       // personal services
+  if (/temu/.test(txt)) return true;                                         // personal retail
+  if (/supermarket|checkers|shoprite|pick n pay|woolworths|spar|tani|ok foods/.test(txt)) return true;
+  if (/restaurant|pub|lounge|bistro|cafe|kelder|seekombuis|plato|puffies|cigar/.test(txt)) return true;
+  return false;
+};
+```
+
+Update every call site currently using `isSalaryCat(x.category)`:
+
+1. `sumSalary` → filter with the new `isSalary(e)`.
+2. Per-bucket `Salary` series in `cashflow` → `exp.filter((x) => x.date.startsWith(key) && isSalary(x))`.
+3. Gross Profit stays `revenue − (totalExp − salary)` — no formula change.
+
+Rename the helper from `isSalaryCat` to `isSalary` to reflect that it now takes the full `Expense` row.
+
+## Verification steps
+
+1. Load `/results`, set range to **Dec 2025**, confirm the new **Salary** point on the Revenue trend chart is ≈ R 15–17 k (was ≈ R 6 k). Gross Profit shifts up by the same delta.
+2. Scan a few other months in the trend chart — the salary line should now track higher than before across the whole history without touching real business expenses.
+3. Typecheck.
+
+## Out of scope
+
+- No changes to `src/data/historical.json`, `src/data/bank-import-2026.json`, or the store — the underlying category on each expense stays as-is (per user preference "Leave source data alone; only expand the Results-page keyword rules").
+- Expenses page will still show these rows under their original categories (Food / Other / Labour / etc.).
 
 ## Files touched
-- `src/routes/__root.tsx` — add one small `useEffect` and two imports.
+- `src/routes/results.tsx` — expand salary matcher, rename helper, update two call sites.
