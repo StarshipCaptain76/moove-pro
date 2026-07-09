@@ -1,62 +1,57 @@
-## Expenses feature
+## Four small improvements
 
-Add an expense tracker where you snap a photo of a slip/invoice, AI extracts the details, and it's saved & categorised.
+### 1. Auto-archive old quotes (Home)
+- Add `archived?: boolean` to `Doc` in `src/lib/store.ts`.
+- On Home load, sweep once: any quote with `type === "quote"`, `status` in `{draft, sent}`, and `createdAt` older than 10 days → set `archived: true` (via `upsertDoc`). Accepted quotes and invoices are never touched.
+- Home lists filter out `archived === true`. Planner + Results untouched (accepted quotes still show).
+- Small "Archived (n)" link at the bottom of Home → shows the archived list in-page with an "Unarchive" button per row.
 
-### Categories (editable in Settings)
-Seed defaults:
-Truck Payment, Diesel/Fuel, Labour, Data/Airtime, Sand/Stone/Trailer Hire, Toll Fee, Accommodation, Advertising, Food, Maintenance, Asset Purchases, Entertainment, Grass Purchase, Other.
+### 2. Quote validity note on PDF
+- In `src/lib/pdf.ts`, for `type === "quote"` add a line under the totals block: **"This quote is valid for 7 days from the date of issue."**
+- Also render "Valid until: {createdAt + 7 days, formatted}" beside it.
+- No change to invoices.
 
-### Data model (added to `src/lib/store.ts`)
-```
-Expense {
-  id, createdAt, date (yyyy-mm-dd),
-  category, vendor, description,
-  amount, vatAmount?,
-  paymentMethod?, notes?,
-  receiptImage?: string (base64 or object URL),
-  linkedDocId?: string  // optional link to a job/invoice
-}
-```
-Store: `expenses[]`, `expenseCategories[]`, `upsertExpense`, `deleteExpense`, `upsertCategory`, `deleteCategory`. Persisted with existing zustand persist (bumped store name to preserve older data via migration merge).
+### 3. Non-negative numeric inputs on Quote/Invoice
+- In `src/routes/doc.$id.tsx` every numeric input for qty, price, deposit %, distance km:
+  - `min={0}` on the input,
+  - `onChange` clamps `Math.max(0, Number(v))`,
+  - `inputMode="decimal"` retained (already there).
+- Apply the same clamp to the new tumbler component (below) and to deposit quick-chips.
 
-### AI parsing
-- Server function `parseReceipt` in `src/lib/expenses.functions.ts` using Lovable AI Gateway (`google/gemini-3-flash-preview`) with the image as `image_url` and a structured `Output.object` schema returning: `date, vendor, total, vat, category (from allowed list), description, paymentMethod`.
-- Client compresses camera image (max 1600px, JPEG q0.7) then base64-encodes and calls the server fn.
-- Category is matched against the user's current category list; falls back to "Other".
+### 4. Inline horizontal tumbler for line-item qty & price
+New component `src/components/app/InlineTumbler.tsx`:
+- Renders the current value large in the middle with faint neighbouring values on either side (ticks style, MOOVE-Fit vibe).
+- Swipe left/right (pointer events) to change the value; snaps to `step` (qty: 1, price: configurable — default R10 with fine mode R1 on long-press).
+- Tap the number → opens a keypad drawer (existing `Input`) for exact entry. Long-press → toggles fine/coarse step.
+- Clamped to `min = 0`, optional `max`.
+- Wired into the line-item rows in `doc.$id.tsx`: qty uses step 1; price uses step 10 (fine step 1). Existing plain inputs become the fallback shown inside the tap-to-edit drawer.
+- Purely pointer + touch events, no external lib. Haptic `navigator.vibrate(5)` on step change when available.
 
-### New route: `/expenses`
-Mobile-first, matches existing app style:
-- **Header**: Month selector (chevrons), total for month, "+" FAB opens camera.
-- **List**: grouped by day, each row: category chip · vendor · amount · thumbnail. Tap = edit sheet.
-- **Add flow (bottom sheet)**:
-  1. "Take photo" (camera) or "Choose from library" (`<input type=file accept=image/* capture=environment>`).
-  2. Show spinner "Reading slip…" while AI parses.
-  3. Pre-filled edit form: date, category (select), vendor, amount, VAT, payment method, description, notes. Receipt image preview with retake.
-  4. Save.
-- Manual add (skip photo) also supported.
+### 5. Density presets (Settings → Appearance)
+- Add a new "Appearance" tab in `src/routes/settings.tsx` with three buttons: **Compact / Normal / Comfortable**.
+- Persist `density: "compact" | "normal" | "comfortable"` in the zustand store.
+- Apply by setting `data-density` on `<html>` in `__root.tsx` (and reading the persisted value on mount).
+- In `src/styles.css` add:
+  ```
+  :root { font-size: 16px; }
+  html[data-density="compact"]      { font-size: 13px; }
+  html[data-density="normal"]       { font-size: 15px; }
+  html[data-density="comfortable"]  { font-size: 17px; }
+  ```
+  Because Tailwind's spacing/sizing is rem-based, this rescales spacing + type together → real density change, not just fonts.
+- Also drop the default base to 15px so the app is denser out of the box (Normal preset).
 
-### Shell / navigation
-Add "Expenses" (receipt icon) to bottom tab bar in `src/components/app/Shell.tsx`. Tabs become: Home · Planner · Expenses · Results · Settings (FAB in centre unchanged).
-
-### Results page
-Add an "Expenses" stat card and a small category-breakdown list for the selected period. Net profit = invoiced (paid) − expenses.
-
-### Settings
-New "Expenses" tab: manage category list (add/rename/delete, alphabetical, same UX as Catalog editor).
-
-### Storage
-Receipt images stored inline as base64 in the persisted zustand store (consistent with the current fully-local architecture — no backend tables added). If a receipt exceeds ~1 MB after compression, we downscale further to stay within localStorage limits.
-
-### Files
-- edit `src/lib/store.ts` (types + state + actions + seed categories)
-- create `src/lib/expenses.functions.ts` (AI parse server fn)
-- create `src/routes/expenses.tsx` (list + add/edit sheet + camera)
-- create `src/components/app/ReceiptCapture.tsx` (camera/upload + compress)
-- edit `src/components/app/Shell.tsx` (add tab)
-- edit `src/routes/settings.tsx` (categories editor tab)
-- edit `src/routes/results.tsx` (expense totals + net profit)
+### Files touched
+- edit `src/lib/store.ts` (archived field, density state)
+- edit `src/routes/index.tsx` (auto-archive sweep, archived list)
+- edit `src/lib/pdf.ts` (quote validity)
+- edit `src/routes/doc.$id.tsx` (non-negative clamps, use InlineTumbler for qty/price)
+- create `src/components/app/InlineTumbler.tsx`
+- edit `src/routes/settings.tsx` (Appearance tab)
+- edit `src/routes/__root.tsx` (apply data-density)
+- edit `src/styles.css` (base font-size + density variants)
 
 ### Out of scope
-- Multi-user sync / cloud storage of receipts
-- Exporting expenses to PDF/CSV (can add later if you want)
-- OCR training / custom models — we rely on Gemini vision
+- No animated iOS-wheel picker (you chose inline horizontal tumbler).
+- No per-user cloud sync of density.
+- No changes to invoice PDF or archived flow for invoices.
