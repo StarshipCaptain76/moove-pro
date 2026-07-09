@@ -13,6 +13,10 @@ import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, parseISO } from "date-fns";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/doc/$id")({ component: DocPage });
 
@@ -152,8 +156,11 @@ function DocPage() {
           </Card>
 
           <Card className="p-4">
-            <Label className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> Scheduled date</Label>
-            <Input type="date" value={doc.scheduledDate ?? ""} onChange={(e) => update({ scheduledDate: e.target.value })} />
+            <Label className="flex items-center gap-1 mb-1"><Calendar className="h-3.5 w-3.5" /> Scheduled date</Label>
+            <ScheduledDatePicker
+              value={doc.scheduledDate}
+              onChange={(iso) => update({ scheduledDate: iso })}
+            />
           </Card>
 
           <Card className="p-4 space-y-2">
@@ -203,5 +210,36 @@ function Row({ label, v, bold }: { label: string; v: string; bold?: boolean }) {
     <div className={`flex justify-between ${bold ? "font-bold text-base" : ""}`}>
       <span>{label}</span><span>{v}</span>
     </div>
+  );
+}
+
+function ScheduledDatePicker({ value, onChange }: { value?: string; onChange: (iso: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const selected = value ? parseISO(value) : undefined;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn("w-full justify-start text-left font-normal", !selected && "text-muted-foreground")}
+        >
+          <Calendar className="mr-2 h-4 w-4" />
+          {selected ? format(selected, "EEE, d MMM yyyy") : "Pick a date"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          onSelect={(d) => {
+            if (!d) return;
+            onChange(format(d, "yyyy-MM-dd"));
+            setOpen(false);
+          }}
+          initialFocus
+          className={cn("p-3 pointer-events-auto")}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
