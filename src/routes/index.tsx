@@ -37,12 +37,12 @@ function Index() {
   const todayJobs = visible.filter((d) => d.scheduledDate === today);
 
   const stats = {
-    quotes: visible.filter((d) => d.type === "quote").length,
-    invoices: visible.filter((d) => d.type === "invoice").length,
-    outstanding: visible
+    quotes: docs.filter((d) => d.type === "quote").length,
+    invoices: docs.filter((d) => d.type === "invoice").length,
+    outstanding: docs
       .filter((d) => d.type === "invoice" && d.status !== "paid")
       .reduce((s, d) => s + docTotals(d, billing.vatPct).balance, 0),
-    paidThisMonth: visible
+    paidThisMonth: docs
       .filter((d) => {
         if (d.status !== "paid") return false;
         const stamp = d.paidAt ?? d.createdAt;

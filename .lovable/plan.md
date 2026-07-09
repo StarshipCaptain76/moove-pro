@@ -1,46 +1,33 @@
-## Feature
+## Root cause
 
-On the doc edit screen (`/doc/:id`), add an **"Import from Contacts"** button next to the Customer name input that opens the phone's native contact picker, lets the user pick one contact, and pre-fills Name / Phone / Email on the current doc. Every field stays editable after import.
+In `src/routes/index.tsx`, the four home stats (Outstanding, Paid (month), Quotes, Invoices) are computed from `visible = docs.filter((d) => !d.archived)`. The 391 imported bank invoices in `src/data/bank-import-2026.json` are all stored with `archived: true`, so every stat that depends on `visible` reads 0 — while `Results` reads from the full `docs` array and correctly shows R 8,850 for July 2026 and 6 paid invoices.
 
-## Approach
+The `archived` flag exists to declutter the Today / Recent list (auto-archive of stale quotes, plus imported historical rows), not to hide real income from the dashboard.
 
-Use the browser-native **Contact Picker API** (`navigator.contacts.select`). It's supported on Chrome/Edge Android and Samsung Internet, which is the target for this mobile PWA. It requires:
-- Secure context (HTTPS) — Lovable preview & published are both HTTPS, so fine.
-- A user gesture — we call it inside the button's `onClick`.
-- No permissions to pre-declare; the OS shows its own picker + permission prompt.
+## Fix
 
-If the API is missing (desktop, iOS Safari), we hide the button and show a small inline hint the first time it would appear on those platforms — no crash, no error toast.
+Change only `src/routes/index.tsx`. Compute stats from the full `docs` array; keep the Today / Recent lists on `visible`.
 
-## Scope
+- `stats.outstanding`: `docs.filter(d => d.type === "invoice" && d.status !== "paid").reduce(...)`
+- `stats.paidThisMonth`: `docs.filter(d => d.status === "paid" && (d.paidAt ?? d.createdAt)?.startsWith(YYYY-MM)).reduce(...)` (already using the createdAt fallback)
+- `stats.quotes`: count all `d.type === "quote"` (not just visible)
+- `stats.invoices`: count all `d.type === "invoice"` (not just visible)
 
-Only two files:
-
-1. **New**: `src/components/app/ContactImportButton.tsx`
-   - Small button (icon + "Contacts") using the same `Button` primitive.
-   - Feature-detects `"contacts" in navigator && "ContactsManager" in window`. If unsupported, renders `null`.
-   - On click:
-     ```
-     const [c] = await (navigator as any).contacts.select(
-       ["name", "tel", "email"],
-       { multiple: false }
-     );
-     ```
-   - Wraps in try/catch. User-cancel resolves to `[]` — silently no-op. Any other throw → `toast.error("Could not open contacts")`.
-   - Calls `onPick({ name, phone, email })` with the first non-empty entry from each array.
-
-2. **Edit**: `src/routes/doc.$id.tsx`
-   - Import the new component.
-   - Render it in the Customer card, in the same row as the Name label (right-aligned), so it sits above the CustomerCombobox.
-   - `onPick` merges into `doc.customer` via the existing `upsertDoc({ ...doc, customer: { ...doc.customer, ...picked } })` — same shape as the combobox's `onPick`, so fields remain editable and downstream customer autofill (`customers` list) works unchanged.
-   - If the picked contact has no phone but the doc already has one, we don't overwrite (only fill fields the picker returned).
-
-## Out of scope
-
-- No changes to the store, no new "Contacts" table, no persistence of the OS contact list.
-- No iOS/desktop fallback UI beyond hiding the button.
-- No bulk import.
+Keep unchanged:
+- `todayJobs` still uses `visible` (archived rows should stay out of Today).
+- The Recent tab still uses `visible.slice(0, 15)`.
+- The "Show archived quotes (N)" panel still uses `archived`.
 
 ## Verification
 
-- On Chrome Android (or Chrome DevTools "Emulate mobile" with the Contact Picker flag) at `/doc/:id`: tap **Contacts** → OS picker appears → pick one → Name / Phone / Email populate → each field is still editable → Save / WhatsApp / Email work.
-- On desktop Chrome / iOS Safari: the Contacts button is hidden, nothing else changes.
+On the home page for July 2026:
+- **Paid (month)** ≈ R 8,850 (matches Results).
+- **Invoices** shows the total imported + created invoices (391+ range), not 0.
+- **Outstanding** shows the sum of any unpaid invoices across all docs.
+- Today / Recent lists look identical to before (still hide archived rows).
+- Results page is unchanged.
+
+## Out of scope
+
+- No changes to the import data or the store (per prior preference: leave source data alone; adjust the reading page).
+- No change to auto-archive behavior for stale quotes.
