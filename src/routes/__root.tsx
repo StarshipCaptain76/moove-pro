@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { useStore } from "../lib/store";
 
 function NotFoundComponent() {
   return (
@@ -120,6 +121,12 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const density = useStore((s) => s.density);
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-density", density ?? "normal");
+    }
+  }, [density]);
 
   return (
     <QueryClientProvider client={queryClient}>

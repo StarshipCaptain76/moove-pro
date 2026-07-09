@@ -111,6 +111,21 @@ export async function generatePdf(
   drawTot(`Deposit (${doc.depositPct}%)`, fmtMoney(t.deposit, billing.currency));
   drawTot("Balance Due", fmtMoney(t.balance, billing.currency), true);
 
+  if (doc.type === "quote") {
+    const validUntil = new Date(doc.createdAt);
+    validUntil.setDate(validUntil.getDate() + 7);
+    pdf.setFont("helvetica", "italic");
+    pdf.setFontSize(9);
+    pdf.setTextColor(80, 80, 80);
+    pdf.text(
+      `This quote is valid for 7 days from the date of issue (valid until ${validUntil.toLocaleDateString("en-ZA")}).`,
+      M,
+      y + 4,
+    );
+    pdf.setTextColor(20, 20, 20);
+    y += 6;
+  }
+
   // banking block
   y = Math.max(y + 10, 235);
   pdf.setFillColor(245, 245, 245);

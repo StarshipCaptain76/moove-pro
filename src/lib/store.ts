@@ -5,6 +5,7 @@ export type Unit = "each" | "hour" | "km" | "job";
 export type PayMethod = "cash" | "eft" | "card";
 export type DocType = "quote" | "invoice";
 export type DocStatus = "draft" | "sent" | "accepted" | "paid" | "cancelled";
+export type Density = "compact" | "normal" | "comfortable";
 
 export interface Expense {
   id: string;
@@ -70,6 +71,7 @@ export interface Doc {
   createdAt: string;
   scheduledDate?: string; // ISO date (yyyy-mm-dd)
   dayOrder?: number;
+  archived?: boolean;
   customer: Customer;
   items: LineItem[];
   notes?: string;
@@ -124,6 +126,7 @@ interface State {
   docs: Doc[];
   expenses: Expense[];
   expenseCategories: string[];
+  density: Density;
   upsertDoc: (d: Doc) => void;
   deleteDoc: (id: string) => void;
   upsertCatalog: (c: CatalogItem) => void;
@@ -138,6 +141,7 @@ interface State {
   addExpenseCategory: (name: string) => void;
   renameExpenseCategory: (oldName: string, newName: string) => void;
   deleteExpenseCategory: (name: string) => void;
+  setDensity: (d: Density) => void;
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -181,6 +185,7 @@ export const useStore = create<State>()(
       docs: [],
       expenses: [],
       expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
+      density: "normal" as Density,
       upsertDoc: (d) =>
         set((s) => ({
           docs: s.docs.some((x) => x.id === d.id)
@@ -247,6 +252,7 @@ export const useStore = create<State>()(
           expenseCategories: s.expenseCategories.filter((c) => c !== name),
           expenses: s.expenses.map((e) => (e.category === name ? { ...e, category: "Other" } : e)),
         })),
+      setDensity: (d) => set({ density: d }),
     }),
     { name: "moove-store-v1" },
   ),

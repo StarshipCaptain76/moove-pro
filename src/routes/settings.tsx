@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useStore, newId, type Unit } from "@/lib/store";
+import { useStore, newId, type Unit, type Density } from "@/lib/store";
 import { Trash2, Plus, Search, ChevronDown, ChevronUp, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMemo, useState } from "react";
@@ -19,12 +19,13 @@ function SettingsPage() {
     <Shell>
       <h1 className="font-display text-4xl sm:text-5xl tracking-wide mb-4">SETTINGS</h1>
       <Tabs defaultValue="company">
-        <TabsList className="mb-4 w-full grid grid-cols-5">
+        <TabsList className="mb-4 w-full grid grid-cols-6">
           <TabsTrigger value="company">Company</TabsTrigger>
           <TabsTrigger value="banking">Banking</TabsTrigger>
           <TabsTrigger value="catalog">Catalog</TabsTrigger>
           <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="appearance">Display</TabsTrigger>
         </TabsList>
 
         <TabsContent value="company">
@@ -74,8 +75,47 @@ function SettingsPage() {
             <Button onClick={() => toast.success("Saved")} className="w-fit">Save</Button>
           </Card>
         </TabsContent>
+
+        <TabsContent value="appearance">
+          <AppearanceEditor />
+        </TabsContent>
       </Tabs>
     </Shell>
+  );
+}
+
+function AppearanceEditor() {
+  const { density, setDensity } = useStore();
+  const opts: { v: Density; label: string; desc: string }[] = [
+    { v: "compact", label: "Compact", desc: "Maximum info on screen" },
+    { v: "normal", label: "Normal", desc: "Balanced default" },
+    { v: "comfortable", label: "Comfortable", desc: "Larger text, easier to tap" },
+  ];
+  return (
+    <Card className="p-4 sm:p-6 max-w-2xl">
+      <Label className="mb-2 block">Display density</Label>
+      <p className="text-xs text-muted-foreground mb-3">
+        Adjusts font size and spacing across the whole app.
+      </p>
+      <div className="grid gap-2">
+        {opts.map((o) => (
+          <button
+            key={o.v}
+            type="button"
+            onClick={() => setDensity(o.v)}
+            className={
+              "text-left border rounded-md p-3 transition-colors " +
+              (density === o.v
+                ? "border-primary bg-primary/5"
+                : "border-input hover:bg-muted/50")
+            }
+          >
+            <div className="font-semibold">{o.label}</div>
+            <div className="text-xs text-muted-foreground">{o.desc}</div>
+          </button>
+        ))}
+      </div>
+    </Card>
   );
 }
 

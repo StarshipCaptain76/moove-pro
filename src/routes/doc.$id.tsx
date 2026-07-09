@@ -20,8 +20,11 @@ import { cn } from "@/lib/utils";
 import { CustomerCombobox } from "@/components/app/CustomerCombobox";
 import { AddressAutocomplete } from "@/components/app/AddressAutocomplete";
 import { CatalogPicker } from "@/components/app/CatalogPicker";
+import { InlineTumbler } from "@/components/app/InlineTumbler";
 import { useServerFn } from "@tanstack/react-start";
 import { routeDistance } from "@/lib/maps.functions";
+const nn = (v: number) => (isFinite(v) && v > 0 ? v : 0);
+
 
 const DISPOSAL_SITE = {
   address: "Melkhoutfontein Dumpsite, Stilbaai, South Africa",
@@ -197,11 +200,46 @@ function DocPage() {
             <div className="space-y-2">
               {doc.items.length === 0 && <p className="text-sm text-muted-foreground">No items yet.</p>}
               {doc.items.map((it, i) => (
-                <div key={it.id} className="grid grid-cols-[1fr_70px_100px_40px] gap-2 items-center">
-                  <Input value={it.description} placeholder={it.isDistance ? "Transport (km)" : "Description"} onChange={(e) => updateItem(i, { description: e.target.value })} />
-                  <Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: Number(e.target.value) })} />
-                  <Input type="number" value={it.price} onChange={(e) => updateItem(i, { price: Number(e.target.value) })} />
-                  <Button size="icon" variant="ghost" onClick={() => removeItem(i)}><Trash2 className="h-4 w-4" /></Button>
+                <div key={it.id} className="space-y-1.5 border rounded-md p-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={it.description}
+                      placeholder={it.isDistance ? "Transport (km)" : "Description"}
+                      onChange={(e) => updateItem(i, { description: e.target.value })}
+                      className="flex-1"
+                    />
+                    <Button size="icon" variant="ghost" onClick={() => removeItem(i)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                        Qty ({it.unit})
+                      </div>
+                      <InlineTumbler
+                        value={it.qty}
+                        onChange={(v) => updateItem(i, { qty: nn(v) })}
+                        step={1}
+                        min={0}
+                        label="Quantity"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                        Price ({billing.currency})
+                      </div>
+                      <InlineTumbler
+                        value={it.price}
+                        onChange={(v) => updateItem(i, { price: nn(v) })}
+                        step={10}
+                        fineStep={1}
+                        min={0}
+                        prefix={`${billing.currency} `}
+                        label="Price"
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -221,7 +259,7 @@ function DocPage() {
               <Row label="Total" v={fmtMoney(t.total, billing.currency)} bold />
               <div className="pt-2 mt-2 border-t">
                 <Label>Deposit %</Label>
-                <Input type="number" value={doc.depositPct} onChange={(e) => update({ depositPct: Number(e.target.value) })} />
+                <Input type="number" min={0} max={100} inputMode="decimal" value={doc.depositPct} onChange={(e) => update({ depositPct: Math.max(0, Math.min(100, Number(e.target.value))) })} />
               </div>
               <Row label="Deposit" v={fmtMoney(t.deposit, billing.currency)} />
               <Row label="Balance" v={fmtMoney(t.balance, billing.currency)} bold />

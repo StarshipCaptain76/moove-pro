@@ -7,6 +7,12 @@
 @import "@fontsource/inter/600.css";
 @import "@fontsource/inter/700.css";
 
+/* Density presets — rescales rem-based spacing and type together. */
+html { font-size: 15px; }
+html[data-density="compact"] { font-size: 13px; }
+html[data-density="normal"] { font-size: 15px; }
+html[data-density="comfortable"] { font-size: 17px; }
+
 @custom-variant dark (&:is(.dark *));
 
 /*
