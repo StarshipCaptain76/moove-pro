@@ -1,51 +1,61 @@
-# Revenue page: date range + richer reporting
+# Bank statement import (May – Jul 2026)
 
-Upgrade `src/routes/results.tsx` so all KPIs and charts respect a user-selected period, and add more useful reporting angles.
+Extend the existing Settings importer to load a second batch — bank-statement data from the FNB business account (63098866280) into the app store.
 
-## 1. Period selector (top of page, sticky under header)
-Tap-only chips (no keyboard):
-- **This month** (default), **Last month**, **This quarter**, **YTD**, **Last 12 months**, **This year**, **Last year**, **All time**, **Custom…**
-- **Custom…** opens a popover with two shared `DatePicker`s (from/to) — reuses `src/components/app/DatePicker.tsx`.
-- Also: a **Year** tumbler (◀ 2026 ▶) and **Month** tumbler visible when the "Month" or "Year" granularity is chosen.
-- Persist last selection to the store (add `reportRange` to settings slice) so it survives navigation.
+## 1. Source selection & dedup
+- **Primary source**: CSV in `transaction_history_Moove_Stilbaai_1.zip` — covers 5 May → 9 Jul 2026 (291 rows).
+- **Fill 1–4 May 2026 gap** from PDF statement #23 (parsed with `pdftotext -layout`).
+- PDF statements #22 (mid-Mar → mid-Apr), and the overlapping portions of #23/#24 with the CSV, are **ignored** to avoid double-counting April historical + already-present CSV rows.
+- Ignore anything on/before 30 Apr 2026.
 
-## 2. Scope everything through the range
-Compute `from`/`to` ISO dates from the selection, then filter:
-- `paid` invoices by `paidAt`
-- `expenses` by `date`
-- Outstanding stays "as of today" (labelled)
-- All KPIs, pie charts and category list use the filtered sets.
+## 2. Bank charges (new expenses)
+Add two "Bank Charges" expenses (new category, auto-created):
+- 15 May 2026 — R 104.72 (Service Fees R 92.64 + VAT R 12.08) from statement #23.
+- 15 Jun 2026 — R 247.83 (R 217.04 + VAT R 30.79) from statement #24.
+- (July statement not yet issued; skipped.)
 
-## 3. Expanded KPI row
-Two rows of stat tiles:
-- Revenue, Expenses, **Net Profit**, **Margin %**
-- **Invoices paid** (count), **Avg invoice value**, **Outstanding (all-time)**, **Overdue** (invoices past due date & unpaid)
-Each tile shows a small **Δ vs previous period** (same length window immediately before) in green/red.
+## 3. Expenses (all debits)
+Every negative amount → one `Expense` row:
+- `date` = transaction date
+- `amount` = |value|
+- `vendor` = raw description (trimmed, e.g. "ENGEN STILBAAI")
+- `paymentMethod` = `card` for card-style descriptors ("491050*4699", "Yoco", "S2S*", "AP *", "SMART-AP", "FNB APP PREPAID"), `cash` for "ATM CASH", else `eft`.
+- `category` derived by keyword rules against existing categories:
+  - ENGEN / FUEL → Diesel/Fuel
+  - AIRTIME / PREPAID → Data/Airtime
+  - TANI / SPAR / OK FOODS / WIMPY / SUPERMARKET / PHARMACY → Food
+  - STEYNS / SSK / AGRILAND / HARDWARE → Maintenance
+  - ATM CASH → Other
+  - SALARY / LABOUR / DYLAN pay → Labour
+  - LODGE / ACCOM → Accommodation
+  - anything else → Other
+- Category matching is case-insensitive; unmatched → Other. New categories only added if absolutely required (only "Bank Charges" here).
 
-## 4. Charts (all respect range)
-- **Revenue trend** — line/bar auto-bucketed by range length: ≤ 62 days → daily; ≤ 18 months → monthly; longer → yearly. Replaces the fixed 12-mo MoM.
-- **Year-over-Year** — keep, but compare selected year vs previous year (driven by year tumbler).
-- **Revenue by payment method** — pie + legend with amounts and %.
-- **Revenue by service** — horizontal bar chart (top 8) instead of pie, easier to read on mobile; shows amount + % of total.
-- **Expenses by category** — keep list, add % of expenses bar inline.
-- **New: Cash flow** — grouped bar per bucket: Revenue vs Expenses, with Net line overlay.
-- **New: Top customers** — table (top 5) by revenue in range, count of jobs, avg value.
+## 4. Income (all credits) — prior-year same-month % allocation
+Each positive amount → one paid `Doc` (invoice):
+- `type=invoice`, `status=paid`, `paidAt` = txn date, `paymentMethod`=`eft`
+- `customer.name` = raw description
+- `number` = `INV-BNK-<yyyymmdd>-<seq>`
+- Assign a single line item whose **description** is chosen so the month's totals match the prior-year same-month service mix:
+  - Read historical `docs` from `src/data/historical.json` filtered by month `2025-05`, `2025-06`, `2025-07`.
+  - Build `{itemDescription → %}` for each target month.
+  - Within each 2026 month, allocate credits greedily (largest-first) to the service with the biggest remaining target amount until the mix matches.
+- Fallback if prior-year same month is missing or has <2 items: use **trailing 3-month average mix** from `2025-{m-3..m-1}` of historical.
+- Line item: `qty=1`, `price=amount`, `unit=job`.
 
-## 5. Export / share
-Add a small **Export CSV** button (period + all filtered rows: paid invoices and expenses in two sections). Client-side blob download, no backend.
+## 5. Delivery
+- **New file** `src/data/bank-import-2026.json` containing the pre-computed `expenses[]`, `docs[]`, `newExpenseCategories: ["Bank Charges"]`, `newCatalogItems: []`, `maxInvoiceNo: 0`.
+- **Settings page** gets a second button, styled like the existing historical import: "Import bank statements (May–Jul 2026)" with the same idempotency guard (uses `bank-` ID prefix so re-clicks are no-ops) and a matching "Clear bank import" action.
+- Reuse the existing `importHistorical` store action — no store changes needed beyond a small `bank-` prefix in `clearHistorical` (extend filter to strip both `hist-` and `bank-`).
 
-## 6. Small polish
-- Rename page title/heading to **"Revenue & Reports"**.
-- Update route `head()` title/description accordingly.
-- Show the active range as a subtle caption under the heading ("1 Jul – 31 Jul 2026 · vs Jun").
-
-## Technical notes
-- File touched: `src/routes/results.tsx` (main), `src/lib/store.ts` (add `reportRange` persisted setting, small helper `filterByRange`).
-- New tiny component `src/components/app/RangePicker.tsx` encapsulating chips + custom popover + year/month tumblers, reusing existing `DatePicker` and `InlineTumbler`.
-- CSV export helper inline in `results.tsx` (no new dep).
-- No backend changes; all derived from existing `docs` / `expenses` in the Zustand store.
+## 6. Implementation steps
+1. Python script (sandbox) parses CSV + PDF #23 gap + PDF fee lines → `src/data/bank-import-2026.json`.
+2. Load `historical.json` in the same script to compute prior-year mix and pre-assign line items so the app doesn't need runtime allocation logic.
+3. Add "Import bank statements" button + "Clear bank import" to `src/routes/settings.tsx`.
+4. Extend `clearHistorical` in `src/lib/store.ts` to also match `bank-` ID prefixes.
 
 ## Out of scope
-- Persisting reports server-side.
-- PDF export.
-- Editing invoices/expenses from this page.
+- Editing/removing the existing historical import.
+- Reconciling against existing invoices (no matching by amount).
+- Parsing bank statements older than 30 Apr 2026 or newer than 9 Jul 2026.
+- Any UI beyond the two Settings buttons.
