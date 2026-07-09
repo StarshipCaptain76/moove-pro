@@ -75,8 +75,6 @@ function PlannerPage() {
 
   return (
     <Shell>
-      <h1 className="font-display text-4xl sm:text-5xl tracking-wide mb-3">PLANNER</h1>
-
       {/* View switcher */}
       <div className="inline-flex rounded-lg border p-0.5 bg-muted mb-3 w-full sm:w-auto">
         {(["agenda", "week", "month"] as View[]).map((v) => (

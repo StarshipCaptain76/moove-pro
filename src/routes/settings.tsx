@@ -17,7 +17,6 @@ function SettingsPage() {
   const s = useStore();
   return (
     <Shell>
-      <h1 className="font-display text-4xl sm:text-5xl tracking-wide mb-4">SETTINGS</h1>
       <Tabs defaultValue="company">
         <TabsList className="mb-4 w-full grid grid-cols-6">
           <TabsTrigger value="company">Company</TabsTrigger>

@@ -49,11 +49,6 @@ function Index() {
 
   return (
     <Shell>
-      <div className="mb-4">
-        <h1 className="font-display text-4xl sm:text-5xl tracking-wide leading-none">DASHBOARD</h1>
-        <p className="text-sm text-muted-foreground mt-1">Welcome back to {company.name}</p>
-      </div>
-
       <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
         <Stat label="Outstanding" value={fmtMoney(stats.outstanding, billing.currency)} accent />
         <Stat label="Paid (month)" value={fmtMoney(stats.paidThisMonth, billing.currency)} />

@@ -57,8 +57,7 @@ function ExpensesPage() {
 
   return (
     <Shell>
-      <div className="flex items-center justify-between mb-3">
-        <h1 className="font-display text-4xl sm:text-5xl tracking-wide">EXPENSES</h1>
+      <div className="flex items-center justify-end mb-3">
         <Button size="sm" onClick={newExpense} className="hidden sm:inline-flex">
           <Plus className="h-4 w-4 mr-1" /> Add
         </Button>
