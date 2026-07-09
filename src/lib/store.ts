@@ -297,7 +297,29 @@ export const useStore = create<State>()(
         return { expenses: expBefore - expenses.length, docs: docBefore - docs.length };
       },
     }),
-    { name: "moove-store-v1" },
+    {
+      name: "moove-store-v1",
+      version: 2,
+      migrate: (persisted: unknown, version: number) => {
+        const s = persisted as State;
+        if (!s) return s;
+        if (version < 2) {
+          // Fix mis-dated historical entries: Dec 2026 → Dec 2025.
+          const fix = (v?: string) => (v && v.startsWith("2026-12") ? v.replace("2026-12", "2025-12") : v);
+          s.docs = (s.docs || []).map((d) =>
+            d.id?.startsWith("hist-")
+              ? { ...d, paidAt: fix(d.paidAt) ?? d.paidAt, createdAt: fix(d.createdAt) ?? d.createdAt }
+              : d,
+          );
+          s.expenses = (s.expenses || []).map((e) =>
+            e.id?.startsWith("hist-")
+              ? { ...e, date: fix(e.date) ?? e.date, createdAt: fix(e.createdAt) ?? e.createdAt }
+              : e,
+          );
+        }
+        return s;
+      },
+    },
   ),
 );
 
