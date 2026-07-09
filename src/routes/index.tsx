@@ -36,9 +36,11 @@ function Index() {
   const today = format(new Date(), "yyyy-MM-dd");
   const todayJobs = visible.filter((d) => d.scheduledDate === today);
 
+  const thisMonth = format(new Date(), "yyyy-MM");
+  const inThisMonth = (d: (typeof docs)[number]) => (d.createdAt ?? "").startsWith(thisMonth);
   const stats = {
-    quotes: docs.filter((d) => d.type === "quote").length,
-    invoices: docs.filter((d) => d.type === "invoice").length,
+    quotes: docs.filter((d) => d.type === "quote" && inThisMonth(d)).length,
+    invoices: docs.filter((d) => d.type === "invoice" && inThisMonth(d)).length,
     outstanding: docs
       .filter((d) => d.type === "invoice" && d.status !== "paid")
       .reduce((s, d) => s + docTotals(d, billing.vatPct).balance, 0),
@@ -46,7 +48,7 @@ function Index() {
       .filter((d) => {
         if (d.status !== "paid") return false;
         const stamp = d.paidAt ?? d.createdAt;
-        return stamp?.startsWith(format(new Date(), "yyyy-MM"));
+        return stamp?.startsWith(thisMonth);
       })
       .reduce((s, d) => s + docTotals(d, billing.vatPct).total, 0),
   };
@@ -56,8 +58,8 @@ function Index() {
       <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
         <Stat label="Outstanding" value={fmtMoney(stats.outstanding, billing.currency)} accent />
         <Stat label="Paid (month)" value={fmtMoney(stats.paidThisMonth, billing.currency)} />
-        <Stat label="Quotes" value={String(stats.quotes)} />
-        <Stat label="Invoices" value={String(stats.invoices)} />
+        <Stat label="Quotes (month)" value={String(stats.quotes)} />
+        <Stat label="Invoices (month)" value={String(stats.invoices)} />
       </div>
 
       <Card className="p-3 sm:p-4">
