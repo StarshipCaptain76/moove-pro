@@ -6,14 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useStore, newId, type Unit, type Density } from "@/lib/store";
-import { Trash2, Plus, Search, ChevronDown, ChevronUp, Check, X } from "lucide-react";
+import { Trash2, Plus, Search, ChevronDown, ChevronUp, Check, X, Link2, Copy } from "lucide-react";
 import { toast } from "sonner";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/store";
 import historical from "@/data/historical.json";
 import bankImport from "@/data/bank-import-2026.json";
 import { InlineTumbler } from "@/components/app/InlineTumbler";
 import { Slider } from "@/components/ui/slider";
+import { getShareLink, subscribeSync } from "@/lib/sync";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
@@ -33,6 +34,7 @@ function SettingsPage() {
         </TabsList>
 
         <TabsContent value="company">
+          <div className="grid gap-4 max-w-2xl">
           <Card className="p-4 sm:p-6 grid gap-3 max-w-2xl">
             {(["name","tagline","address","phone","email"] as const).map((k) => (
               <div key={k}>
@@ -42,6 +44,8 @@ function SettingsPage() {
             ))}
             <Button onClick={() => toast.success("Saved")} className="w-fit">Save</Button>
           </Card>
+            <SyncLinkCard />
+          </div>
         </TabsContent>
 
         <TabsContent value="banking">
