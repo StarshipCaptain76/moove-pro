@@ -85,6 +85,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+    ].map((m) => {
+      if ("title" in m) return { title: "MOOVE — Quote & Invoice" };
+      if (m.name === "description" || m.property === "og:description")
+        return { ...m, content: "Quote, invoice, plan and analyse MOOVE moving jobs." };
+      if (m.property === "og:title") return { ...m, content: "MOOVE — Quote & Invoice" };
+      return m;
     ],
     links: [
       {
