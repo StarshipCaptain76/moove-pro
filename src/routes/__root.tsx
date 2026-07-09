@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { useStore } from "../lib/store";
+import historical from "../data/historical.json";
+import bankImport from "../data/bank-import-2026.json";
 
 function NotFoundComponent() {
   return (
@@ -127,6 +129,18 @@ function RootComponent() {
       document.documentElement.setAttribute("data-density", density ?? "normal");
     }
   }, [density]);
+
+  // Auto-import bundled datasets once per browser. Both imports are
+  // idempotent (dedupe by id), so re-running is safe and cheap. Guarded so
+  // we don't run during SSR and don't waste work if already imported.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const s = useStore.getState();
+    const hasHist = s.docs.some((d) => d.id.startsWith("hist-")) || s.expenses.some((e) => e.id.startsWith("hist-"));
+    const hasBank = s.docs.some((d) => d.id.startsWith("bank-")) || s.expenses.some((e) => e.id.startsWith("bank-"));
+    if (!hasHist) s.importHistorical(historical as Parameters<typeof s.importHistorical>[0]);
+    if (!hasBank) s.importHistorical(bankImport as Parameters<typeof s.importHistorical>[0]);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
