@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "./store";
+import type { Json } from "@/integrations/supabase/types";
 
 const LS_KEY = "moove-workspace-id";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,7 +38,7 @@ async function resolveWorkspaceId(): Promise<string> {
   if (stored && UUID_RE.test(stored)) return stored;
   const { data, error } = await supabase
     .from("workspaces")
-    .insert({ data: snapshot() })
+    .insert({ data: snapshot() as unknown as Json })
     .select("id")
     .single();
   if (error) throw error;
@@ -66,7 +67,7 @@ async function push() {
   emit();
   const { error } = await supabase
     .from("workspaces")
-    .update({ data: snapshot(), updated_at: new Date().toISOString() })
+    .update({ data: snapshot() as unknown as Json, updated_at: new Date().toISOString() })
     .eq("id", state.workspaceId);
   if (error) {
     state.status = "error";
