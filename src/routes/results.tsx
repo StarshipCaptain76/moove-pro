@@ -69,7 +69,6 @@ function ResultsPage() {
 
   return (
     <Shell>
-      <h1 className="font-display text-4xl sm:text-5xl tracking-wide mb-4">RESULTS</h1>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-4">
         <Stat label="Revenue" v={fmtMoney(totalRev, billing.currency)} />
         <Stat label="Expenses" v={fmtMoney(totalExpenses, billing.currency)} />
