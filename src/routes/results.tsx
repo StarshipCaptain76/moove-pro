@@ -57,70 +57,71 @@ function ResultsPage() {
 
   return (
     <Shell>
-      <h1 className="font-display text-5xl tracking-wide mb-6">RESULTS</h1>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Stat label="Total Revenue" v={fmtMoney(totalRev, billing.currency)} />
+      <h1 className="font-display text-4xl sm:text-5xl tracking-wide mb-4">RESULTS</h1>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-4">
+        <Stat label="Revenue" v={fmtMoney(totalRev, billing.currency)} />
         <Stat label="Outstanding" v={fmtMoney(outstanding, billing.currency)} />
         <Stat label="Jobs Paid" v={String(paid.length)} />
         <Stat label="Quotes" v={String(docs.filter(d=>d.type==="quote").length)} />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4 mb-4">
+      <div className="space-y-3">
         <ChartCard title="Revenue by Payment Method">
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={byMethod} dataKey="value" nameKey="name" outerRadius={90} label>
+              <Pie data={byMethod} dataKey="value" nameKey="name" outerRadius={70} label={(e) => e.name}>
                 {byMethod.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
               <Tooltip formatter={(v: number) => fmtMoney(v, billing.currency)} />
-              <Legend />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
+
         <ChartCard title="Revenue by Service">
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={220}>
             <PieChart>
-              <Pie data={byService} dataKey="value" nameKey="name" outerRadius={90} label>
+              <Pie data={byService} dataKey="value" nameKey="name" outerRadius={70}>
                 {byService.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
               <Tooltip formatter={(v: number) => fmtMoney(v, billing.currency)} />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
+
+        <ChartCard title="Month-over-Month (12 mo)">
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={mom} margin={{ left: -20, right: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v: number) => fmtMoney(v, billing.currency)} />
+              <Bar dataKey="revenue" fill="#E11D2E" />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Year-over-Year">
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={yoy} margin={{ left: -20, right: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v: number) => fmtMoney(v, billing.currency)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey={String(new Date().getFullYear() - 1)} fill="#6B6B6B" />
+              <Bar dataKey={String(new Date().getFullYear())} fill="#E11D2E" />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
       </div>
-
-      <ChartCard title="Month-over-Month Revenue (12 mo)">
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={mom}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" /><YAxis />
-            <Tooltip formatter={(v: number) => fmtMoney(v, billing.currency)} />
-            <Bar dataKey="revenue" fill="#E11D2E" />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      <div className="h-4" />
-      <ChartCard title="Year-over-Year Comparison">
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={yoy}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" /><YAxis />
-            <Tooltip formatter={(v: number) => fmtMoney(v, billing.currency)} />
-            <Legend />
-            <Bar dataKey={String(new Date().getFullYear() - 1)} fill="#6B6B6B" />
-            <Bar dataKey={String(new Date().getFullYear())} fill="#E11D2E" />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
     </Shell>
   );
 }
 
 function Stat({ label, v }: { label: string; v: string }) {
-  return <Card className="p-4"><div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div><div className="text-2xl font-display mt-1">{v}</div></Card>;
+  return <Card className="p-3 sm:p-4"><div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">{label}</div><div className="text-xl sm:text-2xl font-display mt-1 truncate">{v}</div></Card>;
 }
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return <Card className="p-4"><h3 className="font-semibold mb-3">{title}</h3>{children}</Card>;
+  return <Card className="p-3 sm:p-4"><h3 className="font-semibold text-sm mb-2">{title}</h3>{children}</Card>;
 }

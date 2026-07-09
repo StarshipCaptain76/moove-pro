@@ -1,108 +1,66 @@
+## Mobile-first overhaul
 
-# MOOVE Quote & Invoice App
+Target: one-handed use on a phone. Every primary action reachable with the thumb; secondary actions tucked behind sheets/menus; no horizontal scroll; no tiny hit targets (min 44px).
 
-A single-user local-first web app for MOOVE Moving Company. No login. Data stored in the browser (Lovable Cloud enabled for optional cross-device sync later; v1 uses local storage for zero-friction).
+### Global shell (`src/components/app/Shell.tsx`)
+- Slim sticky top bar: MOOVE wordmark left, sync dot + overflow menu right. Drop the desktop nav row entirely on mobile.
+- New **bottom tab bar** (fixed, safe-area padded): Dashboard · Planner · New · Results · Settings. Center "New" is a raised FAB that opens a sheet to pick Quote or Invoice.
+- Desktop (≥md): keep the current top nav, hide the bottom bar.
+- Main content: `pb-24` on mobile so nothing hides under the tab bar.
 
-## Branding
+### Dashboard (`/`)
+- Compact hero: smaller display headline, single-line greeting.
+- Stats grid: 2×2 on phone, edge-to-edge cards with big numbers, tiny labels.
+- Merge "Today's jobs" + "Recent" into a single tabbed list (Today / Recent) — one card, less scrolling.
+- Remove the top-right dual New Quote/Invoice buttons (moved to the FAB).
+- Each list row: full-width tappable, chevron affordance, status pill.
 
-- Logo: uploaded MOOVE truck logo (uploaded as CDN asset).
-- Colors sampled from moove.durable.site + logo: black `#0A0A0A`, MOOVE red `#E11D2E`, off-white `#FAFAFA`, muted grey `#6B6B6B`.
-- Typography: bold condensed display (Bebas Neue) for headings, Inter for body — matches transport/logistics feel.
-- Company details baked into settings defaults: MOOVE, Stilbaai, contact from Google Business profile.
+### Document editor (`/doc/$id`) — the most-used screen
+This is where the biggest wins live. Rework into a **stepper/section layout** optimized for typing on a phone:
 
-## Core screens (5 routes, minimum-tap flow)
+- Sticky compact header: back · doc number · status pill · overflow menu (delete, duplicate).
+- **Sticky bottom action bar** with the primary send actions (WhatsApp big & green, Email, PDF as icons). Always thumb-reachable while scrolling long forms.
+- Sections stack vertically as collapsible cards, opened by default in this order:
+  1. **Customer** — name combobox full-width; phone + email stacked (not side-by-side on phone); big touch inputs (`h-11`).
+  2. **Route** — From / To autocompletes stacked; Disposal chip inline; "Calculate distance" button full width; km readout as pill.
+  3. **Line items** — each row becomes a mini-card: description on top row, qty × price on second row with `inputMode="decimal"`, trash icon right. "+ Catalog / KM / Blank" as a segmented action row.
+  4. **Totals & deposit** — sticky summary card with big total, deposit slider/steppers instead of a number field (with quick chips 0/25/50/100%). Deposit-paid as a switch.
+  5. **Schedule** — date picker button full-width.
+  6. **Notes** — collapsed by default.
+- Convert-to-invoice / Mark-paid move into the overflow menu; Mark-paid opens a bottom sheet with big Cash/EFT/Card buttons.
 
-```text
-/              Dashboard: [+ New Quote] big CTA, recent docs, today's jobs
-/doc/$id       Quote/Invoice editor (single screen — the whole flow)
-/planner       Calendar with drag-drop jobs
-/results       Analytics: pie charts, MoM, YoY
-/settings      Products/services catalog, KM rate, banking, deposit %, company info
-```
+### Planner (`/planner`)
+Week view of 7 columns is unusable on 390px. Replace with mobile-specific view:
 
-## New quote → sent in minimum steps
+- **Mobile default:** vertical "agenda" — a scroll list of upcoming days (Today, Tomorrow, then dated). Each day is a section header with the date + job count; jobs are full-width cards with category color stripe, customer, total, and a drag handle. Long-press to drag between days; tap to open.
+- Toolbar as a **segmented control**: Agenda · Week · Month. Week/Month still available but Week becomes horizontal-scroll snap columns; Month keeps the 7-col grid (already dense but readable).
+- Unscheduled jobs collapse into a pill at the top ("3 unscheduled ▾") that expands into a drop zone.
+- Prev/next/today become icon buttons with the date range as a tap-to-open month sheet.
 
-Single-page editor at `/doc/$id`:
+### Results (`/results`)
+- Stat grid 2×2 on phone with tighter padding.
+- Charts stack full-width; reduce heights to ~200px for mobile; hide `<Legend>` where the pie already labels slices; add a period selector (30d / 3m / 12m / YTD) as a segmented control instead of always showing all four charts.
+- Wrap in a horizontal snap-scroll strip for the two pies so the fold isn't half-charts.
 
-1. Auto-fills company + banking from settings.
-2. Customer: name, phone (WA-ready), email — 3 inputs, autocomplete from past customers.
-3. Line items: pick from catalog dropdown OR add "KM billing" row (enter km × rate from settings, or paste pickup+dropoff to auto-calc via optional Google Maps).
-4. Deposit %: slider/input (defaults from settings), auto-shows deposit amount + balance.
-5. One row of action buttons — the whole "send" flow is one tap each:
-   - **Send WhatsApp** → opens `https://wa.me/<phone>?text=<pre-filled message + link to hosted PDF>`
-   - **Email PDF** → opens `mailto:` with PDF attached (generated client-side, downloaded + attached via `mailto` body link to hosted PDF)
-   - **Download PDF**
-   - **Convert to Invoice** (if quote) / **Mark Paid** (if invoice)
+### Settings (`/settings`)
+- Tabs already OK; make the tab strip horizontally scrollable and sticky under the header.
+- Company / Banking / Billing forms: single column, `h-11` inputs, inputMode hints on numbers.
+- Catalog: already redesigned last turn — verify the collapsed rows keep 44px hit targets and the add/search row stacks on narrow widths.
 
-Payment marking: single button opens a small sheet → Cash / EFT / Card + optional "Deposit paid" toggle. No extra screens.
+### Design tokens & primitives
+- Add `--safe-bottom` env-aware padding utility for the bottom bar.
+- New `MobileTabBar`, `BottomSheet` (wrap shadcn `Sheet`), and `SegmentedControl` components.
+- Standardize input height: `h-11` on mobile, `h-9` on desktop via a `.field-input` utility.
+- Set `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` (already there) — add `theme-color` matching the header for PWA feel.
 
-## KM billing
+### Out of scope (unless asked)
+- Turning this into a real PWA (manifest, service worker, install prompt).
+- Offline queueing beyond the existing local store + debounced sync.
+- Deep gesture work (swipe-to-delete rows, pull-to-refresh).
 
-- Settings holds default rate/km (e.g. R15/km) and base callout fee.
-- Line item type "Distance": manual km entry by default; optional "Calc from addresses" button uses Google Maps Distance Matrix if a key is added (asked for on first use, stored as secret). Falls back to manual if not configured.
-
-## Planner (`/planner`)
-
-- Week view (7 day columns) + month strip toggle.
-- Any invoice/quote marked "Accepted" auto-appears as a job card in its scheduled day.
-- Drag between days to reschedule; drag within a day to reorder (uses `@dnd-kit`).
-- Click a card → jumps to the underlying doc.
-
-## Results (`/results`)
-
-- Filters: date range, this month, YTD.
-- Cards: revenue, outstanding, deposits held, jobs completed.
-- Charts (Recharts):
-  - Pie: revenue by payment method (Cash/EFT/Card).
-  - Pie: revenue by service type (from catalog).
-  - Bar: MoM revenue (12 months).
-  - Bar: YoY comparison (current vs previous year by month).
-
-## Settings (`/settings`)
-
-Tabs:
-- **Company**: name, address, phone, email, logo (pre-filled MOOVE).
-- **Banking**: pre-filled with the FNB details you provided.
-- **Catalog**: CRUD list of products/services (name, default price, unit).
-- **Billing**: default rate per KM, base callout, default deposit %, VAT %, doc number prefixes, next quote/invoice number.
-- **Integrations**: optional Google Maps API key.
-
-## PDF generation
-
-Client-side with `@react-pdf/renderer` — branded template (logo top-left, red accent bar, banking block at bottom, deposit + balance summary). Same template renders quotes and invoices with different headers/watermark. Generated PDF is downloaded locally AND uploaded to Lovable Assets to get a shareable URL for the WhatsApp deeplink.
-
-## Data model (localStorage via a small store)
-
-```text
-company, banking, billingSettings, catalog[], customers[], documents[], jobs[]
-```
-
-`documents[]` holds both quotes and invoices (typed). `jobs[]` is derived from accepted documents + a scheduled date + ordering index per day.
-
-## Tech choices
-
-- TanStack Start routes as listed.
-- Zustand (persisted) for local store.
-- shadcn/ui + Tailwind for UI.
-- `@dnd-kit/core` + `@dnd-kit/sortable` for planner drag-drop.
-- `recharts` for analytics.
-- `@react-pdf/renderer` for PDFs.
-- `date-fns` for date math.
-- Google Maps Distance Matrix (optional, key stored via `add_secret` on first use; called through a server function so the key stays server-side).
-
-## Out of scope for v1 (can add later)
-
-- Multi-user / login.
-- WhatsApp Business API auto-send (using deeplink instead as chosen).
-- Email SMTP auto-send with real attachment (using mailto + hosted PDF link).
-- Cloud sync (data is local; can be added by turning on Lovable Cloud + a sync toggle).
-
-## Build order
-
-1. Design system (colors, fonts, logo asset), shell layout with nav.
-2. Settings page + persisted store with all defaults (banking, catalog seed, KM rate).
-3. Dashboard + document editor + PDF template + payment marking.
-4. WhatsApp deeplink + mailto send.
-5. Planner with dnd-kit.
-6. Results with Recharts.
-7. Optional Google Maps KM auto-calc.
+### Build order
+1. Shell + bottom tab bar + FAB sheet.
+2. Doc editor rework (biggest daily-use win).
+3. Planner agenda view.
+4. Dashboard condensation.
+5. Results + Settings polish.
