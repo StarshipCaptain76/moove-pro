@@ -1,50 +1,51 @@
-## Reduce keyboard input — pickers, sliders, tumblers everywhere
+# Revenue page: date range + richer reporting
 
-### 1. Shared `DatePicker` component
-Extract the existing `ScheduledDatePicker` (duplicated inline in `doc.$id.tsx` and `doc..tsx`) into a reusable **`src/components/app/DatePicker.tsx`** — shadcn Calendar in a Popover, "EEE, d MMM yyyy" label, `pointer-events-auto`.
+Upgrade `src/routes/results.tsx` so all KPIs and charts respect a user-selected period, and add more useful reporting angles.
 
-Props: `value?: string (yyyy-MM-dd)`, `onChange(iso)`, optional `placeholder`, `clearable?: boolean`.
+## 1. Period selector (top of page, sticky under header)
+Tap-only chips (no keyboard):
+- **This month** (default), **Last month**, **This quarter**, **YTD**, **Last 12 months**, **This year**, **Last year**, **All time**, **Custom…**
+- **Custom…** opens a popover with two shared `DatePicker`s (from/to) — reuses `src/components/app/DatePicker.tsx`.
+- Also: a **Year** tumbler (◀ 2026 ▶) and **Month** tumbler visible when the "Month" or "Year" granularity is chosen.
+- Persist last selection to the store (add `reportRange` to settings slice) so it survives navigation.
 
-Replace every `<Input type="date">` and both inline `ScheduledDatePicker` copies with this component.
+## 2. Scope everything through the range
+Compute `from`/`to` ISO dates from the selection, then filter:
+- `paid` invoices by `paidAt`
+- `expenses` by `date`
+- Outstanding stays "as of today" (labelled)
+- All KPIs, pie charts and category list use the filtered sets.
 
-### 2. Date field replacements
-| File | Field | New control |
-|---|---|---|
-| `src/routes/expenses.tsx` | Expense date | `<DatePicker>` |
-| `src/routes/doc.$id.tsx` | Scheduled date | shared `<DatePicker>` |
-| `src/routes/doc..tsx` | Scheduled date | shared `<DatePicker>` |
+## 3. Expanded KPI row
+Two rows of stat tiles:
+- Revenue, Expenses, **Net Profit**, **Margin %**
+- **Invoices paid** (count), **Avg invoice value**, **Outstanding (all-time)**, **Overdue** (invoices past due date & unpaid)
+Each tile shows a small **Δ vs previous period** (same length window immediately before) in green/red.
 
-Result: no `type="date"` remains in the app; every date entry is a tap-to-open calendar.
+## 4. Charts (all respect range)
+- **Revenue trend** — line/bar auto-bucketed by range length: ≤ 62 days → daily; ≤ 18 months → monthly; longer → yearly. Replaces the fixed 12-mo MoM.
+- **Year-over-Year** — keep, but compare selected year vs previous year (driven by year tumbler).
+- **Revenue by payment method** — pie + legend with amounts and %.
+- **Revenue by service** — horizontal bar chart (top 8) instead of pie, easier to read on mobile; shows amount + % of total.
+- **Expenses by category** — keep list, add % of expenses bar inline.
+- **New: Cash flow** — grouped bar per bucket: Revenue vs Expenses, with Net line overlay.
+- **New: Top customers** — table (top 5) by revenue in range, count of jobs, avg value.
 
-### 3. Numeric field replacements
-Reuse the existing **`InlineTumbler`** (already used for qty/price on doc items) for all remaining numeric entry.
+## 5. Export / share
+Add a small **Export CSV** button (period + all filtered rows: paid invoices and expenses in two sections). Client-side blob download, no backend.
 
-| File | Field | Control |
-|---|---|---|
-| `src/routes/expenses.tsx` | Amount (R) | `InlineTumbler` (step 10, fine 1, min 0) |
-| `src/routes/doc.$id.tsx` | Deposit % | `<Slider>` 0–100 step 5 with big value readout (replaces number input) |
-| `src/routes/doc.$id.tsx` | Distance km | `InlineTumbler` (step 5, fine 1, min 0) |
-| `src/routes/doc..tsx` | Deposit %, distance km | same as above |
-| `src/routes/settings.tsx` → Billing | Rate per KM, Base callout, Default deposit %, VAT %, Next quote #, Next invoice # | Deposit % + VAT % → `<Slider>` 0–100. Rate/Callout → `InlineTumbler`. Next # → `InlineTumbler` (step 1). |
+## 6. Small polish
+- Rename page title/heading to **"Revenue & Reports"**.
+- Update route `head()` title/description accordingly.
+- Show the active range as a subtle caption under the heading ("1 Jul – 31 Jul 2026 · vs Jun").
 
-### 4. Category / payment method already dropdowns — verify
-Confirm `expenses.tsx` category select and payment-method chooser are already tap-only (they are — `<select>` and radio chips). No change needed.
+## Technical notes
+- File touched: `src/routes/results.tsx` (main), `src/lib/store.ts` (add `reportRange` persisted setting, small helper `filterByRange`).
+- New tiny component `src/components/app/RangePicker.tsx` encapsulating chips + custom popover + year/month tumblers, reusing existing `DatePicker` and `InlineTumbler`.
+- CSV export helper inline in `results.tsx` (no new dep).
+- No backend changes; all derived from existing `docs` / `expenses` in the Zustand store.
 
-### 5. Keep as keyboard input (intentional)
-Free-text fields that inherently need typing stay as `<Input>`:
-- Company name/tagline/address/email
-- Banking labels
-- Customer name/phone/email/address
-- Item description, invoice notes
-- Category / catalog item names
-- Quote/invoice prefix (short text)
-- Search boxes (customer combobox, address autocomplete)
-
-### Files touched
-- **Add**: `src/components/app/DatePicker.tsx`
-- **Edit**: `src/routes/expenses.tsx`, `src/routes/doc.$id.tsx`, `src/routes/doc..tsx`, `src/routes/settings.tsx`
-
-### Out of scope
-- Rewriting `NumField` in settings globally beyond the specific billing fields listed.
-- Changing text-input fields (names, addresses, descriptions).
-- New tumbler animation styles — reusing the existing `InlineTumbler`.
+## Out of scope
+- Persisting reports server-side.
+- PDF export.
+- Editing invoices/expenses from this page.
