@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useStore, docTotals, fmtMoney, type Doc, type Expense } from "@/lib/store";
 import {
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar,
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Bar,
   XAxis, YAxis, Legend, CartesianGrid, LineChart, Line, ComposedChart,
 } from "recharts";
 import {
