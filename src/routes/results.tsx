@@ -231,10 +231,9 @@ function ResultsPage() {
         <Stat label="Net Profit" v={fmtMoney(net, billing.currency)} delta={delta(net, netPrev)} />
         <Stat label="Margin" v={`${margin.toFixed(1)}%`} delta={delta(margin, marginPrev, true)} />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 mb-4">
         <Stat label="Invoices Paid" v={String(paidCount)} delta={delta(paidCount, paidCountPrev, true)} />
         <Stat label="Avg Invoice" v={fmtMoney(avg, billing.currency)} delta={delta(avg, avgPrev)} />
-        <Stat label="Outstanding" v={fmtMoney(outstanding, billing.currency)} sub="as of today" />
         <Stat label="Overdue" v={String(overdueCount)} sub="unpaid, past date" />
       </div>
 
