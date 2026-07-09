@@ -6,6 +6,38 @@ export type PayMethod = "cash" | "eft" | "card";
 export type DocType = "quote" | "invoice";
 export type DocStatus = "draft" | "sent" | "accepted" | "paid" | "cancelled";
 
+export interface Expense {
+  id: string;
+  createdAt: string;
+  date: string; // yyyy-mm-dd
+  category: string;
+  vendor: string;
+  description?: string;
+  amount: number;
+  vatAmount?: number;
+  paymentMethod?: PayMethod;
+  notes?: string;
+  receiptImage?: string; // data URL
+  linkedDocId?: string;
+}
+
+export const DEFAULT_EXPENSE_CATEGORIES = [
+  "Accommodation",
+  "Advertising",
+  "Asset Purchases",
+  "Data/Airtime",
+  "Diesel/Fuel",
+  "Entertainment",
+  "Food",
+  "Grass Purchase",
+  "Labour",
+  "Maintenance",
+  "Sand/Stone/Trailer Hire",
+  "Toll Fee",
+  "Truck Payment",
+  "Other",
+];
+
 export interface CatalogItem {
   id: string;
   name: string;
@@ -90,6 +122,8 @@ interface State {
   catalog: CatalogItem[];
   customers: Customer[];
   docs: Doc[];
+  expenses: Expense[];
+  expenseCategories: string[];
   upsertDoc: (d: Doc) => void;
   deleteDoc: (id: string) => void;
   upsertCatalog: (c: CatalogItem) => void;
@@ -99,6 +133,11 @@ interface State {
   setBanking: (b: Banking) => void;
   setBilling: (b: BillingSettings) => void;
   nextDocNumber: (t: DocType) => string;
+  upsertExpense: (e: Expense) => void;
+  deleteExpense: (id: string) => void;
+  addExpenseCategory: (name: string) => void;
+  renameExpenseCategory: (oldName: string, newName: string) => void;
+  deleteExpenseCategory: (name: string) => void;
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -140,6 +179,8 @@ export const useStore = create<State>()(
       ],
       customers: [],
       docs: [],
+      expenses: [],
+      expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
       upsertDoc: (d) =>
         set((s) => ({
           docs: s.docs.some((x) => x.id === d.id)
@@ -179,6 +220,33 @@ export const useStore = create<State>()(
         set({ billing: { ...b, nextInvoiceNo: n + 1 } });
         return `${b.invoicePrefix}-${n}`;
       },
+      upsertExpense: (e) =>
+        set((s) => ({
+          expenses: s.expenses.some((x) => x.id === e.id)
+            ? s.expenses.map((x) => (x.id === e.id ? e : x))
+            : [e, ...s.expenses],
+        })),
+      deleteExpense: (id) => set((s) => ({ expenses: s.expenses.filter((e) => e.id !== id) })),
+      addExpenseCategory: (name) =>
+        set((s) => {
+          const n = name.trim();
+          if (!n || s.expenseCategories.some((c) => c.toLowerCase() === n.toLowerCase())) return {} as Partial<State>;
+          return { expenseCategories: [...s.expenseCategories, n] };
+        }),
+      renameExpenseCategory: (oldName, newName) =>
+        set((s) => {
+          const n = newName.trim();
+          if (!n) return {} as Partial<State>;
+          return {
+            expenseCategories: s.expenseCategories.map((c) => (c === oldName ? n : c)),
+            expenses: s.expenses.map((e) => (e.category === oldName ? { ...e, category: n } : e)),
+          };
+        }),
+      deleteExpenseCategory: (name) =>
+        set((s) => ({
+          expenseCategories: s.expenseCategories.filter((c) => c !== name),
+          expenses: s.expenses.map((e) => (e.category === name ? { ...e, category: "Other" } : e)),
+        })),
     }),
     { name: "moove-store-v1" },
   ),

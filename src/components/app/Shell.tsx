@@ -4,7 +4,7 @@ import logoAsset from "@/assets/moove-logo.png.asset.json";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Calendar, BarChart3, Settings,
-  Cloud, CloudOff, Link2, Check, Plus, FileText, Receipt,
+  Cloud, CloudOff, Link2, Check, Plus, FileText, Receipt, Wallet,
 } from "lucide-react";
 import { initSync, subscribeSync, getShareLink } from "@/lib/sync";
 import { useStore, newId, type Doc } from "@/lib/store";
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 const nav = [
   { to: "/", label: "Home", icon: LayoutDashboard },
   { to: "/planner", label: "Planner", icon: Calendar },
+  { to: "/expenses", label: "Expenses", icon: Wallet },
   { to: "/results", label: "Results", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
@@ -84,7 +85,7 @@ function MobileTabBar() {
     { to: "/", label: "Home", icon: LayoutDashboard },
     { to: "/planner", label: "Planner", icon: Calendar },
     { fab: true },
-    { to: "/results", label: "Results", icon: BarChart3 },
+    { to: "/expenses", label: "Expenses", icon: Wallet },
     { to: "/settings", label: "Settings", icon: Settings },
   ] as const;
 

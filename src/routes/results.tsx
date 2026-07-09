@@ -11,7 +11,7 @@ export const Route = createFileRoute("/results")({ component: ResultsPage });
 const COLORS = ["#E11D2E", "#0A0A0A", "#6B6B6B", "#F5A623", "#16A34A"];
 
 function ResultsPage() {
-  const { docs, billing } = useStore();
+  const { docs, billing, expenses } = useStore();
   const paid = docs.filter((d) => d.status === "paid" && d.paidAt);
 
   const byMethod = useMemo(() => {
@@ -54,15 +54,27 @@ function ResultsPage() {
 
   const totalRev = paid.reduce((s, d) => s + docTotals(d, billing.vatPct).total, 0);
   const outstanding = docs.filter((d) => d.type === "invoice" && d.status !== "paid").reduce((s, d) => s + docTotals(d, billing.vatPct).balance, 0);
+  const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+  const netProfit = totalRev - totalExpenses;
+
+  const expByCategory = useMemo(() => {
+    const m: Record<string, number> = {};
+    expenses.forEach((e) => {
+      m[e.category] = (m[e.category] ?? 0) + (e.amount || 0);
+    });
+    return Object.entries(m)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [expenses]);
 
   return (
     <Shell>
       <h1 className="font-display text-4xl sm:text-5xl tracking-wide mb-4">RESULTS</h1>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-4">
         <Stat label="Revenue" v={fmtMoney(totalRev, billing.currency)} />
+        <Stat label="Expenses" v={fmtMoney(totalExpenses, billing.currency)} />
+        <Stat label="Net Profit" v={fmtMoney(netProfit, billing.currency)} />
         <Stat label="Outstanding" v={fmtMoney(outstanding, billing.currency)} />
-        <Stat label="Jobs Paid" v={String(paid.length)} />
-        <Stat label="Quotes" v={String(docs.filter(d=>d.type==="quote").length)} />
       </div>
 
       <div className="space-y-3">
@@ -114,6 +126,22 @@ function ResultsPage() {
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
+
+        {expByCategory.length > 0 && (
+          <ChartCard title="Expenses by Category">
+            <ul className="divide-y">
+              {expByCategory.map((e, i) => (
+                <li key={e.name} className="flex items-center justify-between py-2 text-sm">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="h-2 w-2 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+                    <span className="truncate">{e.name}</span>
+                  </span>
+                  <span className="font-semibold shrink-0">{fmtMoney(e.value, billing.currency)}</span>
+                </li>
+              ))}
+            </ul>
+          </ChartCard>
+        )}
       </div>
     </Shell>
   );

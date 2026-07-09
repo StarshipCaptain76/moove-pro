@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as PlannerRouteImport } from './routes/planner'
+import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocIdRouteImport } from './routes/doc.$id'
 import { Route as DocRouteImport } from './routes/doc.'
@@ -29,6 +30,11 @@ const ResultsRoute = ResultsRouteImport.update({
 const PlannerRoute = PlannerRouteImport.update({
   id: '/planner',
   path: '/planner',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExpensesRoute = ExpensesRouteImport.update({
+  id: '/expenses',
+  path: '/expenses',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -49,6 +55,7 @@ const DocRoute = DocRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/expenses': typeof ExpensesRoute
   '/planner': typeof PlannerRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/expenses': typeof ExpensesRoute
   '/planner': typeof PlannerRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/expenses': typeof ExpensesRoute
   '/planner': typeof PlannerRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
@@ -74,12 +83,27 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/planner' | '/results' | '/settings' | '/doc/' | '/doc/$id'
+  fullPaths:
+    | '/'
+    | '/expenses'
+    | '/planner'
+    | '/results'
+    | '/settings'
+    | '/doc/'
+    | '/doc/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/planner' | '/results' | '/settings' | '/doc' | '/doc/$id'
+  to:
+    | '/'
+    | '/expenses'
+    | '/planner'
+    | '/results'
+    | '/settings'
+    | '/doc'
+    | '/doc/$id'
   id:
     | '__root__'
     | '/'
+    | '/expenses'
     | '/planner'
     | '/results'
     | '/settings'
@@ -89,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ExpensesRoute: typeof ExpensesRoute
   PlannerRoute: typeof PlannerRoute
   ResultsRoute: typeof ResultsRoute
   SettingsRoute: typeof SettingsRoute
@@ -119,6 +144,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlannerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/expenses': {
+      id: '/expenses'
+      path: '/expenses'
+      fullPath: '/expenses'
+      preLoaderRoute: typeof ExpensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -145,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ExpensesRoute: ExpensesRoute,
   PlannerRoute: PlannerRoute,
   ResultsRoute: ResultsRoute,
   SettingsRoute: SettingsRoute,
