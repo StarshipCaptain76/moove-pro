@@ -1,34 +1,48 @@
 ## Problem
 
-On the doc edit screen (new quote/invoice):
+In `src/routes/doc.$id.tsx` the `send("wa" | "email")` handler does this order:
 
-1. **Customer Name field is unresponsive** — keystrokes don't register. Root cause: `CustomerCombobox` wraps the `<Input>` inside a Radix `PopoverTrigger asChild`. Radix's dismissable-layer + focus management on the trigger swallows key events on the wrapped input (classic Radix-Popover-around-Input pitfall). The AddressAutocomplete inputs work because they use a plain absolute-positioned dropdown, not a Radix Popover.
+```
+await downloadPdf(...)   // async work, ~hundreds of ms
+window.open(wa.me, "_blank")  // OR window.location.href = mailto:...
+```
 
-2. **Address field doesn't feel like a live search / picker.** The component (`AddressAutocomplete`) is actually wired to `placesAutocomplete` (Google Places) and does render a dropdown, but only after a 250 ms debounce with ≥3 chars, and network/auth errors are silently swallowed to `console.error`, so it looks like "nothing happens". We should make the live suggestions visibly reliable and surface any failure.
+Two things break the send:
+
+1. **User-gesture lost after `await`.** On mobile Safari/Chrome (this is a mobile PWA — `/doc/:id` on a 390px viewport), a `window.open(..., "_blank")` that runs *after* an `await` is no longer treated as a direct response to the tap, so the browser blocks the popup and nothing happens. The mailto branch has the same problem: `window.location.href = "mailto:..."` after an `await` is often ignored on iOS.
+2. **`window.open("_blank")` for `wa.me`** is the wrong navigation on mobile — even inside a user gesture, iOS frequently no-ops it in standalone PWA mode. Direct top-level navigation to `wa.me` reliably opens WhatsApp (app on mobile, web on desktop).
 
 ## Plan
 
-### 1. Rewrite `CustomerCombobox` to match the `AddressAutocomplete` pattern
+Rework `send` in `src/routes/doc.$id.tsx` only. No other files touched.
 
-- Drop Radix `Popover` / `PopoverTrigger` / `PopoverContent`.
-- Use a `relative` wrapper `<div>` with a plain `<Input>` and an absolute-positioned dropdown `<div>` beneath it (same shape as `AddressAutocomplete`).
-- Keep behavior: show up to 8 matches filtered by name / phone / email; click picks the customer; typing calls `onType`; blur / outside-click closes.
-- Preserve the `value / customers / onType / onPick` props so the call site in `src/routes/doc.$id.tsx` doesn't change.
+### 1. Do the navigation FIRST, inside the tap gesture
 
-### 2. Make address search visibly work as a picker
+- Validate inputs (`customer.name`, and `phone` for WA / `email` for email) synchronously.
+- Build the `msg` string synchronously.
+- Immediately trigger the channel:
+  - **WhatsApp**: `window.location.href = "https://wa.me/<phone>?text=..."` (top-level nav — works in mobile PWA, on iOS Safari, and on desktop where the OS/browser hands it to WhatsApp Web/desktop app).
+  - **Email**: `window.location.href = "mailto:..."` (unchanged mechanism, but now inside the gesture).
+- Then flip `status: "draft" → "sent"` via `update({ status: "sent" })` right after.
 
-- Show a small inline hint under the input while `q.length < 3` (e.g. "Type 3+ characters to search…") so the user knows suggestions are keystroke-driven.
-- On autocomplete error, surface a `toast.error("Address search failed")` instead of only `console.error`, so a missing/invalid Maps connector isn't silent.
-- Keep the existing debounce (250 ms), Google Places call, and pick-to-fill-address+coords flow — those are already correct.
+### 2. Move the PDF download to a separate, explicit action
 
-### 3. Scope guardrails
+- Add a small **"Download PDF"** button next to the WA / Email buttons in the same actions row.
+- `send()` no longer calls `downloadPdf`. The user taps Download PDF when they want the file (they can then attach it in WhatsApp / their mail client).
+- This removes the async `await` from the gesture path and also makes the PDF an intentional action rather than a hidden side-effect of "Send".
 
-- No changes to the store, to `maps.functions.ts`, or to any other route.
-- Only touch:
-  - `src/components/app/CustomerCombobox.tsx` (rewrite internals, same public API)
-  - `src/components/app/AddressAutocomplete.tsx` (hint + toast on error)
+### 3. Preserve everything else
 
-### Verification
+- No changes to `pdf.ts`, `store.ts`, or the message body.
+- ZA phone normalization (`0…` → `27…`) stays.
+- `mailto` subject/body encoding stays.
 
-- Open an existing quote at `/doc/:id`, type into **Name** → characters appear, matching past customers show in a dropdown, clicking one fills phone/email.
-- Type 3+ chars into **From address** / **To address** → Google Places suggestions render; picking one fills the field and stores coords; "Calculate distance" still works.
+## Verification
+
+On mobile preview at `/doc/:id`:
+
+- Tap **WhatsApp** with a valid customer phone → WhatsApp opens with the prefilled message.
+- Tap **Email** with a valid customer email → the OS mail composer opens with subject + body prefilled.
+- Tap **Download PDF** → PDF saves as before.
+- Missing name / phone / email still shows the corresponding toast.
+- Doc status flips from `draft` to `sent` after WA or email is launched.
