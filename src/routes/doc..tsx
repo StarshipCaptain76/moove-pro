@@ -412,30 +412,3 @@ function DocPage() {
 function Row({ label, v }: { label: string; v: string }) {
   return <div className="flex justify-between text-muted-foreground"><span>{label}</span><span>{v}</span></div>;
 }
-
-function ScheduledDatePicker({ value, onChange }: { value?: string; onChange: (iso: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const selected = value ? parseISO(value) : undefined;
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn("w-full h-11 justify-start text-left font-normal", !selected && "text-muted-foreground")}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {selected ? format(selected, "EEE, d MMM yyyy") : "Pick a date"}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={(d) => { if (!d) return; onChange(format(d, "yyyy-MM-dd")); setOpen(false); }}
-          initialFocus
-          className={cn("p-3 pointer-events-auto")}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
