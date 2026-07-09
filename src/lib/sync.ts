@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "./store";
 import type { Json } from "@/integrations/supabase/types";
+import { toast } from "sonner";
 
 const LS_KEY = "moove-workspace-id";
 const LS_TOKEN_KEY = "moove-workspace-token";
@@ -36,9 +37,35 @@ function readIdFromUrl(): { id: string; token: string | null } | null {
 async function resolveWorkspace(): Promise<{ id: string; token: string }> {
   const fromUrl = readIdFromUrl();
   if (fromUrl && fromUrl.token) {
+    const storedId = localStorage.getItem(LS_KEY);
+    const storedToken = localStorage.getItem(LS_TOKEN_KEY);
+    const differs =
+      storedId && storedToken && (storedId !== fromUrl.id || storedToken !== fromUrl.token);
+    if (differs) {
+      const ok =
+        typeof window !== "undefined" &&
+        window.confirm(
+          "Load workspace from this sync link? Your current local workspace will be replaced.",
+        );
+      if (!ok) {
+        // Strip params and keep the local workspace.
+        const url = new URL(window.location.href);
+        url.searchParams.delete("w");
+        url.searchParams.delete("t");
+        window.history.replaceState({}, "", url.toString());
+        return { id: storedId, token: storedToken };
+      }
+    }
     localStorage.setItem(LS_KEY, fromUrl.id);
     localStorage.setItem(LS_TOKEN_KEY, fromUrl.token);
     return { id: fromUrl.id, token: fromUrl.token };
+  }
+  if (fromUrl && !fromUrl.token) {
+    // Incomplete link: don't overwrite anything and warn the user.
+    toast.error("Sync link is missing its token. Copy a fresh link from Settings.");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("w");
+    window.history.replaceState({}, "", url.toString());
   }
   const stored = localStorage.getItem(LS_KEY);
   const storedToken = localStorage.getItem(LS_TOKEN_KEY);
