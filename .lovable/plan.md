@@ -1,48 +1,46 @@
-## Problem
+## Feature
 
-In `src/routes/doc.$id.tsx` the `send("wa" | "email")` handler does this order:
+On the doc edit screen (`/doc/:id`), add an **"Import from Contacts"** button next to the Customer name input that opens the phone's native contact picker, lets the user pick one contact, and pre-fills Name / Phone / Email on the current doc. Every field stays editable after import.
 
-```
-await downloadPdf(...)   // async work, ~hundreds of ms
-window.open(wa.me, "_blank")  // OR window.location.href = mailto:...
-```
+## Approach
 
-Two things break the send:
+Use the browser-native **Contact Picker API** (`navigator.contacts.select`). It's supported on Chrome/Edge Android and Samsung Internet, which is the target for this mobile PWA. It requires:
+- Secure context (HTTPS) — Lovable preview & published are both HTTPS, so fine.
+- A user gesture — we call it inside the button's `onClick`.
+- No permissions to pre-declare; the OS shows its own picker + permission prompt.
 
-1. **User-gesture lost after `await`.** On mobile Safari/Chrome (this is a mobile PWA — `/doc/:id` on a 390px viewport), a `window.open(..., "_blank")` that runs *after* an `await` is no longer treated as a direct response to the tap, so the browser blocks the popup and nothing happens. The mailto branch has the same problem: `window.location.href = "mailto:..."` after an `await` is often ignored on iOS.
-2. **`window.open("_blank")` for `wa.me`** is the wrong navigation on mobile — even inside a user gesture, iOS frequently no-ops it in standalone PWA mode. Direct top-level navigation to `wa.me` reliably opens WhatsApp (app on mobile, web on desktop).
+If the API is missing (desktop, iOS Safari), we hide the button and show a small inline hint the first time it would appear on those platforms — no crash, no error toast.
 
-## Plan
+## Scope
 
-Rework `send` in `src/routes/doc.$id.tsx` only. No other files touched.
+Only two files:
 
-### 1. Do the navigation FIRST, inside the tap gesture
+1. **New**: `src/components/app/ContactImportButton.tsx`
+   - Small button (icon + "Contacts") using the same `Button` primitive.
+   - Feature-detects `"contacts" in navigator && "ContactsManager" in window`. If unsupported, renders `null`.
+   - On click:
+     ```
+     const [c] = await (navigator as any).contacts.select(
+       ["name", "tel", "email"],
+       { multiple: false }
+     );
+     ```
+   - Wraps in try/catch. User-cancel resolves to `[]` — silently no-op. Any other throw → `toast.error("Could not open contacts")`.
+   - Calls `onPick({ name, phone, email })` with the first non-empty entry from each array.
 
-- Validate inputs (`customer.name`, and `phone` for WA / `email` for email) synchronously.
-- Build the `msg` string synchronously.
-- Immediately trigger the channel:
-  - **WhatsApp**: `window.location.href = "https://wa.me/<phone>?text=..."` (top-level nav — works in mobile PWA, on iOS Safari, and on desktop where the OS/browser hands it to WhatsApp Web/desktop app).
-  - **Email**: `window.location.href = "mailto:..."` (unchanged mechanism, but now inside the gesture).
-- Then flip `status: "draft" → "sent"` via `update({ status: "sent" })` right after.
+2. **Edit**: `src/routes/doc.$id.tsx`
+   - Import the new component.
+   - Render it in the Customer card, in the same row as the Name label (right-aligned), so it sits above the CustomerCombobox.
+   - `onPick` merges into `doc.customer` via the existing `upsertDoc({ ...doc, customer: { ...doc.customer, ...picked } })` — same shape as the combobox's `onPick`, so fields remain editable and downstream customer autofill (`customers` list) works unchanged.
+   - If the picked contact has no phone but the doc already has one, we don't overwrite (only fill fields the picker returned).
 
-### 2. Move the PDF download to a separate, explicit action
+## Out of scope
 
-- Add a small **"Download PDF"** button next to the WA / Email buttons in the same actions row.
-- `send()` no longer calls `downloadPdf`. The user taps Download PDF when they want the file (they can then attach it in WhatsApp / their mail client).
-- This removes the async `await` from the gesture path and also makes the PDF an intentional action rather than a hidden side-effect of "Send".
-
-### 3. Preserve everything else
-
-- No changes to `pdf.ts`, `store.ts`, or the message body.
-- ZA phone normalization (`0…` → `27…`) stays.
-- `mailto` subject/body encoding stays.
+- No changes to the store, no new "Contacts" table, no persistence of the OS contact list.
+- No iOS/desktop fallback UI beyond hiding the button.
+- No bulk import.
 
 ## Verification
 
-On mobile preview at `/doc/:id`:
-
-- Tap **WhatsApp** with a valid customer phone → WhatsApp opens with the prefilled message.
-- Tap **Email** with a valid customer email → the OS mail composer opens with subject + body prefilled.
-- Tap **Download PDF** → PDF saves as before.
-- Missing name / phone / email still shows the corresponding toast.
-- Doc status flips from `draft` to `sent` after WA or email is launched.
+- On Chrome Android (or Chrome DevTools "Emulate mobile" with the Contact Picker flag) at `/doc/:id`: tap **Contacts** → OS picker appears → pick one → Name / Phone / Email populate → each field is still editable → Save / WhatsApp / Email work.
+- On desktop Chrome / iOS Safari: the Contacts button is hidden, nothing else changes.
