@@ -1,61 +1,45 @@
-# Bank statement import (May – Jul 2026)
+## What's in the CSV
 
-Extend the existing Settings importer to load a second batch — bank-statement data from the FNB business account (63098866280) into the app store.
+9 rows, 1–9 Jul 2026, Gold Business Account 63216547993.
 
-## 1. Source selection & dedup
-- **Primary source**: CSV in `transaction_history_Moove_Stilbaai_1.zip` — covers 5 May → 9 Jul 2026 (291 rows).
-- **Fill 1–4 May 2026 gap** from PDF statement #23 (parsed with `pdftotext -layout`).
-- PDF statements #22 (mid-Mar → mid-Apr), and the overlapping portions of #23/#24 with the CSV, are **ignored** to avoid double-counting April historical + already-present CSV rows.
-- Ignore anything on/before 30 Apr 2026.
+| Date | Amount | Description | Handling |
+|---|---:|---|---|
+| 2026/07/09 | +1000.00 | FNB APP PAYMENT FROM MOOVE NEW BANK | **Skip** (own-account transfer) |
+| 2026/07/09 | +550.00 | FNB APP PAYMENT FROM A. GROBLER | Income |
+| 2026/07/09 | −969.00 | DAWIE & JULIUS LOAN | Expense → **Labour** |
+| 2026/07/08 | +1200.00 | christa | Income |
+| 2026/07/07 | +2400.00 | christa | Income |
+| 2026/07/04 | +1200.00 | christa | Income |
+| 2026/07/03 | +2400.00 | ABSA BANK Kiewiet Enterprises | Income |
+| 2026/07/02 | +1100.00 | FNB APP PAYMENT FROM ANNEKIE | Income |
+| 2026/07/01 | +200.00 | FNB APP PAYMENT FROM MOOVE NEW BANK | **Skip** (own-account transfer) |
 
-## 2. Bank charges (new expenses)
-Add two "Bank Charges" expenses (new category, auto-created):
-- 15 May 2026 — R 104.72 (Service Fees R 92.64 + VAT R 12.08) from statement #23.
-- 15 Jun 2026 — R 247.83 (R 217.04 + VAT R 30.79) from statement #24.
-- (July statement not yet issued; skipped.)
+**Net:** 6 income credits totalling **R 8,850.00**, 1 expense of **R 969.00**, 2 skipped transfers.
 
-## 3. Expenses (all debits)
-Every negative amount → one `Expense` row:
-- `date` = transaction date
-- `amount` = |value|
-- `vendor` = raw description (trimmed, e.g. "ENGEN STILBAAI")
-- `paymentMethod` = `card` for card-style descriptors ("491050*4699", "Yoco", "S2S*", "AP *", "SMART-AP", "FNB APP PREPAID"), `cash` for "ATM CASH", else `eft`.
-- `category` derived by keyword rules against existing categories:
-  - ENGEN / FUEL → Diesel/Fuel
-  - AIRTIME / PREPAID → Data/Airtime
-  - TANI / SPAR / OK FOODS / WIMPY / SUPERMARKET / PHARMACY → Food
-  - STEYNS / SSK / AGRILAND / HARDWARE → Maintenance
-  - ATM CASH → Other
-  - SALARY / LABOUR / DYLAN pay → Labour
-  - LODGE / ACCOM → Accommodation
-  - anything else → Other
-- Category matching is case-insensitive; unmatched → Other. New categories only added if absolutely required (only "Bank Charges" here).
+## Income allocation (July 2025 mix)
 
-## 4. Income (all credits) — prior-year same-month % allocation
-Each positive amount → one paid `Doc` (invoice):
-- `type=invoice`, `status=paid`, `paidAt` = txn date, `paymentMethod`=`eft`
-- `customer.name` = raw description
-- `number` = `INV-BNK-<yyyymmdd>-<seq>`
-- Assign a single line item whose **description** is chosen so the month's totals match the prior-year same-month service mix:
-  - Read historical `docs` from `src/data/historical.json` filtered by month `2025-05`, `2025-06`, `2025-07`.
-  - Build `{itemDescription → %}` for each target month.
-  - Within each 2026 month, allocate credits greedily (largest-first) to the service with the biggest remaining target amount until the mix matches.
-- Fallback if prior-year same month is missing or has <2 items: use **trailing 3-month average mix** from `2025-{m-3..m-1}` of historical.
-- Line item: `qty=1`, `price=amount`, `unit=job`.
+Same-month prior-year split:
 
-## 5. Delivery
-- **New file** `src/data/bank-import-2026.json` containing the pre-computed `expenses[]`, `docs[]`, `newExpenseCategories: ["Bank Charges"]`, `newCatalogItems: []`, `maxInvoiceNo: 0`.
-- **Settings page** gets a second button, styled like the existing historical import: "Import bank statements (May–Jul 2026)" with the same idempotency guard (uses `bank-` ID prefix so re-clicks are no-ops) and a matching "Clear bank import" action.
-- Reuse the existing `importHistorical` store action — no store changes needed beyond a small `bank-` prefix in `clearHistorical` (extend filter to strip both `hist-` and `bank-`).
+- Garden Waste Removal — 38.7%
+- Sand/Stone Delivery — 29.5%
+- Furniture Removal — 21.3%
+- Building Rubble Removal — 10.5%
 
-## 6. Implementation steps
-1. Python script (sandbox) parses CSV + PDF #23 gap + PDF fee lines → `src/data/bank-import-2026.json`.
-2. Load `historical.json` in the same script to compute prior-year mix and pre-assign line items so the app doesn't need runtime allocation logic.
-3. Add "Import bank statements" button + "Clear bank import" to `src/routes/settings.tsx`.
-4. Extend `clearHistorical` in `src/lib/store.ts` to also match `bank-` ID prefixes.
+Each of the 6 credits will be split into 4 line items on a paid invoice using these percentages (rounded to 2dp, final line balances to the total).
 
-## Out of scope
-- Editing/removing the existing historical import.
-- Reconciling against existing invoices (no matching by amount).
-- Parsing bank statements older than 30 Apr 2026 or newer than 9 Jul 2026.
-- Any UI beyond the two Settings buttons.
+## Steps
+
+1. **Rewrite `src/data/bank-import-2026.json`**
+   - Drop every existing `bank-` entry (expenses + docs) with a `2026-07` date.
+   - Append 1 new expense: `2026-07-09`, R 969.00, category **Labour**, description "Dawie & Julius", paymethod `eft`.
+   - Append 6 new paid invoices (one per credit) dated 2026-07-01/02/03/04/07/08/09, each with 4 line items allocated per the July 2025 mix, `status: "paid"`, `paidAt` = credit date, `paymentMethod: "eft"`.
+   - Skip the 2 "MOOVE NEW BANK" transfers.
+   - IDs prefixed `bank-2026-07-…` so re-imports dedupe cleanly via existing `bank-` filter in `store.ts`.
+
+2. **No code changes** — the existing Settings → "Bank statements" import button already re-imports this file; counts will update automatically. The store's `isImported()` / `clearHistorical()` treats `bank-` IDs uniformly, so users can re-run the import.
+
+3. **Verify** — typecheck, then load `/settings` and confirm the Bank import card shows the new totals (6 docs / 1 expense for July replaced).
+
+## Files touched
+
+- `src/data/bank-import-2026.json` — regenerated July 2026 slice, May/June rows untouched.
