@@ -263,7 +263,6 @@ function DocPage() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="grid grid-cols-[80px_1fr_80px] gap-2 items-center">
                 <div className="grid grid-cols-2 gap-2">
                   <InlineTumbler
                     value={it.qty}
