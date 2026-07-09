@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod } from "@/lib/store";
 import { downloadPdf } from "@/lib/pdf";
-import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar } from "lucide-react";
+import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -156,7 +156,7 @@ function DocPage() {
           </Card>
 
           <Card className="p-4">
-            <Label className="flex items-center gap-1 mb-1"><Calendar className="h-3.5 w-3.5" /> Scheduled date</Label>
+            <Label className="flex items-center gap-1 mb-1"><CalendarIcon className="h-3.5 w-3.5" /> Scheduled date</Label>
             <ScheduledDatePicker
               value={doc.scheduledDate}
               onChange={(iso) => update({ scheduledDate: iso })}
@@ -223,7 +223,7 @@ function ScheduledDatePicker({ value, onChange }: { value?: string; onChange: (i
           variant="outline"
           className={cn("w-full justify-start text-left font-normal", !selected && "text-muted-foreground")}
         >
-          <Calendar className="mr-2 h-4 w-4" />
+          <CalendarIcon className="mr-2 h-4 w-4" />
           {selected ? format(selected, "EEE, d MMM yyyy") : "Pick a date"}
         </Button>
       </PopoverTrigger>
