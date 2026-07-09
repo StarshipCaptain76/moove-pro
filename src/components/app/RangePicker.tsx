@@ -53,7 +53,7 @@ export function resolveRange(v: RangeValue): { from: Date; to: Date; label: stri
       return { from: startOfYear(d), to: endOfYear(d), label: `${d.getFullYear()}` };
     }
     case "all":
-      return { from: new Date(2000, 0, 1), to: now, label: "All time" };
+      return { from: new Date(2024, 0, 1), to: now, label: "All time" };
     case "custom": {
       const from = v.from ? parseISO(v.from) : startOfMonth(now);
       const to = v.to ? parseISO(v.to) : now;
