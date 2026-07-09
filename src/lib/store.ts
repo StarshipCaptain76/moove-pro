@@ -289,8 +289,9 @@ export const useStore = create<State>()(
         const s = get();
         const expBefore = s.expenses.length;
         const docBefore = s.docs.length;
-        const expenses = s.expenses.filter((e) => !e.id.startsWith("hist-"));
-        const docs = s.docs.filter((d) => !d.id.startsWith("hist-"));
+        const isImported = (id: string) => id.startsWith("hist-") || id.startsWith("bank-");
+        const expenses = s.expenses.filter((e) => !isImported(e.id));
+        const docs = s.docs.filter((d) => !isImported(d.id));
         const catalog = s.catalog.filter((c) => !c.id.startsWith("hist-cat-"));
         set({ expenses, docs, catalog });
         return { expenses: expBefore - expenses.length, docs: docBefore - docs.length };
