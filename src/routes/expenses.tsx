@@ -9,6 +9,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { useStore, newId, fmtMoney, type Expense, type PayMethod } from "@/lib/store";
 import { ReceiptCapture } from "@/components/app/ReceiptCapture";
 import { parseReceipt } from "@/lib/expenses.functions";
+import { DatePicker } from "@/components/app/DatePicker";
+import { InlineTumbler } from "@/components/app/InlineTumbler";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Sparkles, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -234,21 +236,17 @@ function ExpenseSheet({ expense, onClose }: { expense: Expense | null; onClose: 
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Date</Label>
-              <Input
-                type="date"
-                className="h-11"
-                value={draft.date}
-                onChange={(e) => set({ date: e.target.value })}
-              />
+              <DatePicker value={draft.date} onChange={(iso) => set({ date: iso })} />
             </div>
             <div>
               <Label className="text-xs">Amount</Label>
-              <Input
-                type="number"
-                inputMode="decimal"
-                className="h-11"
-                value={draft.amount || ""}
-                onChange={(e) => set({ amount: Number(e.target.value) })}
+              <InlineTumbler
+                value={draft.amount || 0}
+                onChange={(v) => set({ amount: v })}
+                step={10}
+                fineStep={1}
+                min={0}
+                label="Amount"
               />
             </div>
           </div>
@@ -289,12 +287,12 @@ function ExpenseSheet({ expense, onClose }: { expense: Expense | null; onClose: 
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">VAT (optional)</Label>
-              <Input
-                type="number"
-                inputMode="decimal"
-                className="h-11"
-                value={draft.vatAmount ?? ""}
-                onChange={(e) => set({ vatAmount: e.target.value ? Number(e.target.value) : undefined })}
+              <InlineTumbler
+                value={draft.vatAmount ?? 0}
+                onChange={(v) => set({ vatAmount: v > 0 ? v : undefined })}
+                step={1}
+                min={0}
+                label="VAT amount"
               />
             </div>
             <div>
