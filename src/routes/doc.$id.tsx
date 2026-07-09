@@ -13,14 +13,14 @@ import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { CustomerCombobox } from "@/components/app/CustomerCombobox";
 import { AddressAutocomplete } from "@/components/app/AddressAutocomplete";
 import { CatalogPicker } from "@/components/app/CatalogPicker";
 import { InlineTumbler } from "@/components/app/InlineTumbler";
+import { DatePicker } from "@/components/app/DatePicker";
+import { Slider } from "@/components/ui/slider";
 import { useServerFn } from "@tanstack/react-start";
 import { routeDistance } from "@/lib/maps.functions";
 const nn = (v: number) => (isFinite(v) && v > 0 ? v : 0);
@@ -258,8 +258,18 @@ function DocPage() {
               {billing.vatPct > 0 && <Row label={`VAT ${billing.vatPct}%`} v={fmtMoney(t.vat, billing.currency)} />}
               <Row label="Total" v={fmtMoney(t.total, billing.currency)} bold />
               <div className="pt-2 mt-2 border-t">
-                <Label>Deposit %</Label>
-                <Input type="number" min={0} max={100} inputMode="decimal" value={doc.depositPct} onChange={(e) => update({ depositPct: Math.max(0, Math.min(100, Number(e.target.value))) })} />
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Deposit</Label>
+                  <span className="font-display text-xl tabular-nums">{doc.depositPct}%</span>
+                </div>
+                <Slider
+                  value={[doc.depositPct]}
+                  min={0}
+                  max={100}
+                  step={5}
+                  onValueChange={([v]) => update({ depositPct: v })}
+                  className="py-2"
+                />
               </div>
               <Row label="Deposit" v={fmtMoney(t.deposit, billing.currency)} />
               <Row label="Balance" v={fmtMoney(t.balance, billing.currency)} bold />
@@ -272,10 +282,7 @@ function DocPage() {
 
           <Card className="p-4">
             <Label className="flex items-center gap-1 mb-1"><CalendarIcon className="h-3.5 w-3.5" /> Scheduled date</Label>
-            <ScheduledDatePicker
-              value={doc.scheduledDate}
-              onChange={(iso) => update({ scheduledDate: iso })}
-            />
+            <DatePicker value={doc.scheduledDate} onChange={(iso) => update({ scheduledDate: iso })} clearable />
           </Card>
 
           <Card className="p-4 space-y-2">
@@ -325,36 +332,5 @@ function Row({ label, v, bold }: { label: string; v: string; bold?: boolean }) {
     <div className={`flex justify-between ${bold ? "font-bold text-base" : ""}`}>
       <span>{label}</span><span>{v}</span>
     </div>
-  );
-}
-
-function ScheduledDatePicker({ value, onChange }: { value?: string; onChange: (iso: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const selected = value ? parseISO(value) : undefined;
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn("w-full justify-start text-left font-normal", !selected && "text-muted-foreground")}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {selected ? format(selected, "EEE, d MMM yyyy") : "Pick a date"}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={(d) => {
-            if (!d) return;
-            onChange(format(d, "yyyy-MM-dd"));
-            setOpen(false);
-          }}
-          initialFocus
-          className={cn("p-3 pointer-events-auto")}
-        />
-      </PopoverContent>
-    </Popover>
   );
 }
