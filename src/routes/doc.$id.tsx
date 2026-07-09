@@ -258,8 +258,18 @@ function DocPage() {
               {billing.vatPct > 0 && <Row label={`VAT ${billing.vatPct}%`} v={fmtMoney(t.vat, billing.currency)} />}
               <Row label="Total" v={fmtMoney(t.total, billing.currency)} bold />
               <div className="pt-2 mt-2 border-t">
-                <Label>Deposit %</Label>
-                <Input type="number" min={0} max={100} inputMode="decimal" value={doc.depositPct} onChange={(e) => update({ depositPct: Math.max(0, Math.min(100, Number(e.target.value))) })} />
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Deposit</Label>
+                  <span className="font-display text-xl tabular-nums">{doc.depositPct}%</span>
+                </div>
+                <Slider
+                  value={[doc.depositPct]}
+                  min={0}
+                  max={100}
+                  step={5}
+                  onValueChange={([v]) => update({ depositPct: v })}
+                  className="py-2"
+                />
               </div>
               <Row label="Deposit" v={fmtMoney(t.deposit, billing.currency)} />
               <Row label="Balance" v={fmtMoney(t.balance, billing.currency)} bold />
@@ -272,10 +282,7 @@ function DocPage() {
 
           <Card className="p-4">
             <Label className="flex items-center gap-1 mb-1"><CalendarIcon className="h-3.5 w-3.5" /> Scheduled date</Label>
-            <ScheduledDatePicker
-              value={doc.scheduledDate}
-              onChange={(iso) => update({ scheduledDate: iso })}
-            />
+            <DatePicker value={doc.scheduledDate} onChange={(iso) => update({ scheduledDate: iso })} clearable />
           </Card>
 
           <Card className="p-4 space-y-2">
