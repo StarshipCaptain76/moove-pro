@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod } from "@/lib/store";
 import { downloadPdf } from "@/lib/pdf";
-import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon } from "lucide-react";
+import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -17,14 +17,26 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import { CustomerCombobox } from "@/components/app/CustomerCombobox";
+import { AddressAutocomplete } from "@/components/app/AddressAutocomplete";
+import { CatalogPicker } from "@/components/app/CatalogPicker";
+import { useServerFn } from "@tanstack/react-start";
+import { routeDistance } from "@/lib/maps.functions";
+
+const DISPOSAL_SITE = {
+  address: "Melkhoutfontein Dumpsite, Stilbaai, South Africa",
+  coords: { lat: -34.321459, lng: 21.437664 },
+};
 
 export const Route = createFileRoute("/doc/$id")({ component: DocPage });
 
 function DocPage() {
   const { id } = Route.useParams();
   const nav = useNavigate();
-  const { docs, company, banking, billing, catalog, upsertDoc, deleteDoc, nextDocNumber } = useStore();
+  const { docs, company, banking, billing, catalog, customers, upsertDoc, deleteDoc, nextDocNumber } = useStore();
   const doc = docs.find((d) => d.id === id);
+  const distanceFn = useServerFn(routeDistance);
+  const [calcing, setCalcing] = useState(false);
 
   if (!doc) {
     return (
@@ -46,13 +58,34 @@ function DocPage() {
     upsertDoc({ ...doc, items: [...doc.items, { id: newId(), description: "", qty: 1, price: 0, unit: "each", ...it }] });
   const removeItem = (i: number) => upsertDoc({ ...doc, items: doc.items.filter((_, idx) => idx !== i) });
 
-  const addFromCatalog = (catId: string) => {
-    const c = catalog.find((x) => x.id === catId);
-    if (!c) return;
-    addItem({ description: c.name, price: c.price, unit: c.unit, qty: 1 });
-  };
+  const addKm = (km = 10) =>
+    addItem({ description: "Transport (per km)", price: billing.ratePerKm, unit: "km", qty: km, isDistance: true });
 
-  const addKm = () => addItem({ description: "Transport (per km)", price: billing.ratePerKm, unit: "km", qty: 10, isDistance: true });
+  const calcDistance = async () => {
+    if (!doc.fromAddress || !doc.toAddress) return toast.error("Set both addresses first");
+    setCalcing(true);
+    try {
+      const r = await distanceFn({
+        data: {
+          from: { address: doc.fromAddress, ...(doc.fromCoords ?? {}) },
+          to: { address: doc.toAddress, ...(doc.toCoords ?? {}) },
+        },
+      });
+      if (!r.km) return toast.error("No route found");
+      const existingIdx = doc.items.findIndex((i) => i.isDistance);
+      if (existingIdx >= 0) {
+        updateItem(existingIdx, { qty: r.km, price: billing.ratePerKm, description: `Transport (${r.km} km)` });
+      } else {
+        addItem({ description: `Transport (${r.km} km)`, price: billing.ratePerKm, unit: "km", qty: r.km, isDistance: true });
+      }
+      upsertDoc({ ...doc, distanceKm: r.km });
+      toast.success(`Distance: ${r.km} km`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Route failed");
+    } finally {
+      setCalcing(false);
+    }
+  };
 
   const send = async (channel: "wa" | "email") => {
     if (!doc.customer.name) return toast.error("Add customer name first");
@@ -97,11 +130,54 @@ function DocPage() {
           <Card className="p-4">
             <h2 className="font-semibold mb-3">Customer</h2>
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2"><Label>Name</Label><Input value={doc.customer.name} onChange={(e) => updateCust({ name: e.target.value })} /></div>
+              <div className="col-span-2">
+                <Label>Name</Label>
+                <CustomerCombobox
+                  value={doc.customer.name}
+                  customers={customers}
+                  onType={(name) => updateCust({ name })}
+                  onPick={(c) => upsertDoc({ ...doc, customer: { ...c } })}
+                />
+              </div>
               <div><Label>Phone</Label><Input value={doc.customer.phone} onChange={(e) => updateCust({ phone: e.target.value })} placeholder="0821234567" /></div>
               <div><Label>Email</Label><Input value={doc.customer.email} onChange={(e) => updateCust({ email: e.target.value })} /></div>
-              <div className="col-span-2"><Label>From address</Label><Input value={doc.fromAddress ?? ""} onChange={(e) => update({ fromAddress: e.target.value })} /></div>
-              <div className="col-span-2"><Label>To address</Label><Input value={doc.toAddress ?? ""} onChange={(e) => update({ toAddress: e.target.value })} /></div>
+              <div className="col-span-2">
+                <Label>From address</Label>
+                <AddressAutocomplete
+                  value={doc.fromAddress ?? ""}
+                  placeholder="Search address…"
+                  onChange={(v) => update({ fromAddress: v.address, fromCoords: v.coords })}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label>To address</Label>
+                <AddressAutocomplete
+                  value={doc.toAddress ?? ""}
+                  placeholder="Search address…"
+                  onChange={(v) => update({ toAddress: v.address, toCoords: v.coords })}
+                  extraButton={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="whitespace-nowrap"
+                      onClick={() =>
+                        update({ toAddress: DISPOSAL_SITE.address, toCoords: DISPOSAL_SITE.coords })
+                      }
+                    >
+                      <Recycle className="h-4 w-4 mr-1" /> Disposal
+                    </Button>
+                  }
+                />
+              </div>
+              <div className="col-span-2 flex items-center gap-2 text-sm">
+                <Button type="button" size="sm" variant="secondary" onClick={calcDistance} disabled={calcing}>
+                  <RouteIcon className="h-4 w-4 mr-1" /> {calcing ? "Calculating…" : "Calculate distance"}
+                </Button>
+                {doc.distanceKm ? (
+                  <span className="text-muted-foreground">{doc.distanceKm} km</span>
+                ) : null}
+              </div>
             </div>
           </Card>
 
@@ -109,11 +185,12 @@ function DocPage() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold">Line items</h2>
               <div className="flex gap-2">
-                <select className="h-9 border rounded px-2 bg-background text-sm" onChange={(e) => { if (e.target.value) { addFromCatalog(e.target.value); e.target.value=""; } }} defaultValue="">
-                  <option value="">+ From catalog…</option>
-                  {catalog.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <Button size="sm" variant="outline" onClick={addKm}><Truck className="h-4 w-4 mr-1" /> KM</Button>
+                <CatalogPicker
+                  catalog={catalog}
+                  currency={billing.currency}
+                  onPick={(c) => addItem({ description: c.name, price: c.price, unit: c.unit, qty: 1 })}
+                />
+                <Button size="sm" variant="outline" onClick={() => addKm()}><Truck className="h-4 w-4 mr-1" /> KM</Button>
                 <Button size="sm" variant="outline" onClick={() => addItem({})}><Plus className="h-4 w-4" /></Button>
               </div>
             </div>
