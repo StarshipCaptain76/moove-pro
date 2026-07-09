@@ -8,20 +8,29 @@ const LS_TOKEN_KEY = "moove-workspace-token";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Status = "idle" | "loading" | "syncing" | "synced" | "error";
-type Listener = (s: { status: Status; workspaceId: string | null; error?: string }) => void;
+type Listener = (s: { status: Status; workspaceId: string | null; authed: boolean; error?: string }) => void;
 
-const state: { status: Status; workspaceId: string | null; ownerToken: string | null; error?: string } = {
+const state: {
+  status: Status;
+  workspaceId: string | null;
+  ownerToken: string | null;
+  userId: string | null;
+  error?: string;
+} = {
   status: "idle",
   workspaceId: null,
   ownerToken: null,
+  userId: null,
 };
 const listeners = new Set<Listener>();
 function emit() {
-  listeners.forEach((l) => l({ ...state }));
+  listeners.forEach((l) =>
+    l({ status: state.status, workspaceId: state.workspaceId, authed: !!state.userId, error: state.error }),
+  );
 }
 export function subscribeSync(l: Listener) {
   listeners.add(l);
-  l({ ...state });
+  l({ status: state.status, workspaceId: state.workspaceId, authed: !!state.userId, error: state.error });
   return () => listeners.delete(l);
 }
 
@@ -99,14 +108,22 @@ let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let suppressPush = false;
 
 async function push() {
-  if (!state.workspaceId || !state.ownerToken) return;
   state.status = "syncing";
   emit();
-  const { error } = await supabase.rpc("update_workspace", {
-    p_id: state.workspaceId,
-    p_token: state.ownerToken,
-    p_data: snapshot() as unknown as Json,
-  });
+  let error: { message: string } | null = null;
+  if (state.userId) {
+    const res = await supabase.rpc("save_my_workspace", { p_data: snapshot() as unknown as Json });
+    error = res.error;
+  } else if (state.workspaceId && state.ownerToken) {
+    const res = await supabase.rpc("update_workspace", {
+      p_id: state.workspaceId,
+      p_token: state.ownerToken,
+      p_data: snapshot() as unknown as Json,
+    });
+    error = res.error;
+  } else {
+    return;
+  }
   if (error) {
     state.status = "error";
     state.error = error.message;
@@ -123,34 +140,71 @@ function schedulePush() {
   pushTimer = setTimeout(push, 600);
 }
 
+function applyCloudData(data: unknown) {
+  if (!data || typeof data !== "object") return;
+  const cloud = data as Partial<ReturnType<typeof snapshot>>;
+  suppressPush = true;
+  useStore.setState((prev) => ({
+    ...prev,
+    ...(cloud.company && { company: cloud.company }),
+    ...(cloud.banking && { banking: cloud.banking }),
+    ...(cloud.billing && { billing: cloud.billing }),
+    ...(cloud.catalog && { catalog: cloud.catalog }),
+    ...(cloud.customers && { customers: cloud.customers }),
+    ...(cloud.docs && { docs: cloud.docs }),
+  }));
+  suppressPush = false;
+}
+
+async function loadAuthedWorkspace() {
+  const { data, error } = await supabase.rpc("get_my_workspace");
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : (data as { id: string; data: unknown } | null);
+  if (!row?.id) throw new Error("Could not load your workspace");
+  state.workspaceId = row.id;
+  state.ownerToken = null;
+  // If local has data but cloud is empty, seed cloud with local snapshot (first migration).
+  const cloud = (row as { data: unknown }).data;
+  const cloudEmpty = !cloud || (typeof cloud === "object" && Object.keys(cloud as object).length === 0);
+  const local = snapshot();
+  const localHasContent =
+    local.docs?.length || local.catalog?.length || local.customers?.length || local.company?.name;
+  if (cloudEmpty && localHasContent) {
+    await supabase.rpc("save_my_workspace", { p_data: local as unknown as Json });
+  } else {
+    applyCloudData(cloud);
+  }
+}
+
 let started = false;
 export async function initSync() {
   if (started || typeof window === "undefined") return;
   started = true;
+
+  // React to sign-in / sign-out and re-init the sync source.
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+    const newUid = session?.user.id ?? null;
+    if (newUid === state.userId) return;
+    state.userId = newUid;
+    void reinitAfterAuth();
+  });
+
+  const { data: userRes } = await supabase.auth.getUser();
+  state.userId = userRes.user?.id ?? null;
+
   state.status = "loading";
   emit();
   try {
-    const { id, token } = await resolveWorkspace();
-    state.workspaceId = id;
-    state.ownerToken = token;
-    const { data, error } = await supabase.rpc("get_workspace", {
-      p_id: id,
-      p_token: token,
-    });
-    if (error) throw error;
-    if (data && typeof data === "object") {
-      const cloud = data as Partial<ReturnType<typeof snapshot>>;
-      suppressPush = true;
-      useStore.setState((prev) => ({
-        ...prev,
-        ...(cloud.company && { company: cloud.company }),
-        ...(cloud.banking && { banking: cloud.banking }),
-        ...(cloud.billing && { billing: cloud.billing }),
-        ...(cloud.catalog && { catalog: cloud.catalog }),
-        ...(cloud.customers && { customers: cloud.customers }),
-        ...(cloud.docs && { docs: cloud.docs }),
-      }));
-      suppressPush = false;
+    if (state.userId) {
+      await loadAuthedWorkspace();
+    } else {
+      const { id, token } = await resolveWorkspace();
+      state.workspaceId = id;
+      state.ownerToken = token;
+      const { data, error } = await supabase.rpc("get_workspace", { p_id: id, p_token: token });
+      if (error) throw error;
+      applyCloudData(data);
     }
     state.status = "synced";
     emit();
@@ -170,7 +224,36 @@ export async function initSync() {
   }
 }
 
+async function reinitAfterAuth() {
+  state.status = "loading";
+  emit();
+  try {
+    if (state.userId) {
+      await loadAuthedWorkspace();
+    } else {
+      // Signed out: fall back to anonymous workspace stored locally.
+      const stored = localStorage.getItem(LS_KEY);
+      const storedToken = localStorage.getItem(LS_TOKEN_KEY);
+      if (stored && UUID_RE.test(stored) && storedToken && UUID_RE.test(storedToken)) {
+        state.workspaceId = stored;
+        state.ownerToken = storedToken;
+        const { data } = await supabase.rpc("get_workspace", { p_id: stored, p_token: storedToken });
+        applyCloudData(data);
+      } else {
+        state.workspaceId = null;
+        state.ownerToken = null;
+      }
+    }
+    state.status = "synced";
+  } catch (e) {
+    state.status = "error";
+    state.error = e instanceof Error ? e.message : String(e);
+  }
+  emit();
+}
+
 export function getShareLink(): string | null {
+  if (state.userId) return null; // signed-in users sync via login, not link
   if (!state.workspaceId || !state.ownerToken || typeof window === "undefined") return null;
   const url = new URL(window.location.origin);
   url.searchParams.set("w", state.workspaceId);
