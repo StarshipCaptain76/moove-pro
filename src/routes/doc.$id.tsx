@@ -90,17 +90,14 @@ function DocPage() {
     }
   };
 
-  const send = async (channel: "wa" | "email") => {
+  const send = (channel: "wa" | "email") => {
     if (!doc.customer.name) return toast.error("Add customer name first");
-    try {
-      await downloadPdf(doc, company, banking, billing);
-    } catch {}
     const msg = `Hi ${doc.customer.name},\n\nHere is your ${doc.type} ${doc.number} from ${company.name}.\nTotal: ${fmtMoney(t.total, billing.currency)}\nDeposit (${doc.depositPct}%): ${fmtMoney(t.deposit, billing.currency)}\n\nBanking:\n${banking.bank} • Acc ${banking.accountNumber} • Branch ${banking.branchCode}\nRef: ${doc.number}\n\nThanks!\n${company.name}`;
     if (channel === "wa") {
       const phone = doc.customer.phone.replace(/[^\d]/g, "");
       if (!phone) return toast.error("Add customer phone");
       const p = phone.startsWith("0") ? "27" + phone.slice(1) : phone;
-      window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`, "_blank");
+      window.location.href = `https://wa.me/${p}?text=${encodeURIComponent(msg)}`;
     } else {
       if (!doc.customer.email) return toast.error("Add customer email");
       window.location.href = `mailto:${doc.customer.email}?subject=${encodeURIComponent(`${doc.type === "quote" ? "Quote" : "Invoice"} ${doc.number} from ${company.name}`)}&body=${encodeURIComponent(msg)}`;
