@@ -3,14 +3,16 @@ import { useStore } from "./store";
 import type { Json } from "@/integrations/supabase/types";
 
 const LS_KEY = "moove-workspace-id";
+const LS_TOKEN_KEY = "moove-workspace-token";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Status = "idle" | "loading" | "syncing" | "synced" | "error";
 type Listener = (s: { status: Status; workspaceId: string | null; error?: string }) => void;
 
-const state: { status: Status; workspaceId: string | null; error?: string } = {
+const state: { status: Status; workspaceId: string | null; ownerToken: string | null; error?: string } = {
   status: "idle",
   workspaceId: null,
+  ownerToken: null,
 };
 const listeners = new Set<Listener>();
 function emit() {
@@ -22,28 +24,36 @@ export function subscribeSync(l: Listener) {
   return () => listeners.delete(l);
 }
 
-function readIdFromUrl(): string | null {
+function readIdFromUrl(): { id: string; token: string | null } | null {
   if (typeof window === "undefined") return null;
-  const p = new URLSearchParams(window.location.search).get("w");
-  return p && UUID_RE.test(p) ? p : null;
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("w");
+  const token = params.get("t");
+  if (!id || !UUID_RE.test(id)) return null;
+  return { id, token: token && UUID_RE.test(token) ? token : null };
 }
 
-async function resolveWorkspaceId(): Promise<string> {
+async function resolveWorkspace(): Promise<{ id: string; token: string }> {
   const fromUrl = readIdFromUrl();
-  if (fromUrl) {
-    localStorage.setItem(LS_KEY, fromUrl);
-    return fromUrl;
+  if (fromUrl && fromUrl.token) {
+    localStorage.setItem(LS_KEY, fromUrl.id);
+    localStorage.setItem(LS_TOKEN_KEY, fromUrl.token);
+    return { id: fromUrl.id, token: fromUrl.token };
   }
   const stored = localStorage.getItem(LS_KEY);
-  if (stored && UUID_RE.test(stored)) return stored;
-  const { data, error } = await supabase
-    .from("workspaces")
-    .insert({ data: snapshot() as unknown as Json })
-    .select("id")
-    .single();
+  const storedToken = localStorage.getItem(LS_TOKEN_KEY);
+  if (stored && UUID_RE.test(stored) && storedToken && UUID_RE.test(storedToken)) {
+    return { id: stored, token: storedToken };
+  }
+  const { data, error } = await supabase.rpc("create_workspace", {
+    p_data: snapshot() as unknown as Json,
+  });
   if (error) throw error;
-  localStorage.setItem(LS_KEY, data.id);
-  return data.id;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.id || !row?.owner_token) throw new Error("Failed to create workspace");
+  localStorage.setItem(LS_KEY, row.id);
+  localStorage.setItem(LS_TOKEN_KEY, row.owner_token);
+  return { id: row.id, token: row.owner_token };
 }
 
 function snapshot() {
@@ -62,13 +72,14 @@ let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let suppressPush = false;
 
 async function push() {
-  if (!state.workspaceId) return;
+  if (!state.workspaceId || !state.ownerToken) return;
   state.status = "syncing";
   emit();
-  const { error } = await supabase
-    .from("workspaces")
-    .update({ data: snapshot() as unknown as Json, updated_at: new Date().toISOString() })
-    .eq("id", state.workspaceId);
+  const { error } = await supabase.rpc("update_workspace", {
+    p_id: state.workspaceId,
+    p_token: state.ownerToken,
+    p_data: snapshot() as unknown as Json,
+  });
   if (error) {
     state.status = "error";
     state.error = error.message;
@@ -92,16 +103,16 @@ export async function initSync() {
   state.status = "loading";
   emit();
   try {
-    const id = await resolveWorkspaceId();
+    const { id, token } = await resolveWorkspace();
     state.workspaceId = id;
-    const { data, error } = await supabase
-      .from("workspaces")
-      .select("data")
-      .eq("id", id)
-      .maybeSingle();
+    state.ownerToken = token;
+    const { data, error } = await supabase.rpc("get_workspace", {
+      p_id: id,
+      p_token: token,
+    });
     if (error) throw error;
-    if (data?.data && typeof data.data === "object") {
-      const cloud = data.data as Partial<ReturnType<typeof snapshot>>;
+    if (data && typeof data === "object") {
+      const cloud = data as Partial<ReturnType<typeof snapshot>>;
       suppressPush = true;
       useStore.setState((prev) => ({
         ...prev,
@@ -120,6 +131,7 @@ export async function initSync() {
     if (readIdFromUrl()) {
       const url = new URL(window.location.href);
       url.searchParams.delete("w");
+      url.searchParams.delete("t");
       window.history.replaceState({}, "", url.toString());
     }
     // Subscribe to changes and push
@@ -132,8 +144,9 @@ export async function initSync() {
 }
 
 export function getShareLink(): string | null {
-  if (!state.workspaceId || typeof window === "undefined") return null;
+  if (!state.workspaceId || !state.ownerToken || typeof window === "undefined") return null;
   const url = new URL(window.location.origin);
   url.searchParams.set("w", state.workspaceId);
+  url.searchParams.set("t", state.ownerToken);
   return url.toString();
 }
