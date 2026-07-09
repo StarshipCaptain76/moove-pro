@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod } from "@/lib/store";
 import { downloadPdf } from "@/lib/pdf";
-import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Trash2Icon, Route as RouteIcon } from "lucide-react";
+import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -165,7 +165,7 @@ function DocPage() {
                         update({ toAddress: DISPOSAL_SITE.address, toCoords: DISPOSAL_SITE.coords })
                       }
                     >
-                      <Trash2Icon className="h-4 w-4 mr-1" /> Disposal
+                      <Recycle className="h-4 w-4 mr-1" /> Disposal
                     </Button>
                   }
                 />
