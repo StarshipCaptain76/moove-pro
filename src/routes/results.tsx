@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useStore, docTotals, fmtMoney, type Doc, type Expense } from "@/lib/store";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Bar,
-  XAxis, YAxis, Legend, CartesianGrid, LineChart, Line, ComposedChart,
+  XAxis, YAxis, Legend, CartesianGrid, Line, ComposedChart,
 } from "recharts";
 import {
   format, parseISO, differenceInCalendarDays, eachDayOfInterval,
