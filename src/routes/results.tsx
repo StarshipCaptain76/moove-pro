@@ -126,6 +126,22 @@ function ResultsPage() {
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
+
+        {expByCategory.length > 0 && (
+          <ChartCard title="Expenses by Category">
+            <ul className="divide-y">
+              {expByCategory.map((e, i) => (
+                <li key={e.name} className="flex items-center justify-between py-2 text-sm">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="h-2 w-2 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+                    <span className="truncate">{e.name}</span>
+                  </span>
+                  <span className="font-semibold shrink-0">{fmtMoney(e.value, billing.currency)}</span>
+                </li>
+              ))}
+            </ul>
+          </ChartCard>
+        )}
       </div>
     </Shell>
   );
