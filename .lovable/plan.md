@@ -1,66 +1,62 @@
-## Mobile-first overhaul
+## Expenses feature
 
-Target: one-handed use on a phone. Every primary action reachable with the thumb; secondary actions tucked behind sheets/menus; no horizontal scroll; no tiny hit targets (min 44px).
+Add an expense tracker where you snap a photo of a slip/invoice, AI extracts the details, and it's saved & categorised.
 
-### Global shell (`src/components/app/Shell.tsx`)
-- Slim sticky top bar: MOOVE wordmark left, sync dot + overflow menu right. Drop the desktop nav row entirely on mobile.
-- New **bottom tab bar** (fixed, safe-area padded): Dashboard · Planner · New · Results · Settings. Center "New" is a raised FAB that opens a sheet to pick Quote or Invoice.
-- Desktop (≥md): keep the current top nav, hide the bottom bar.
-- Main content: `pb-24` on mobile so nothing hides under the tab bar.
+### Categories (editable in Settings)
+Seed defaults:
+Truck Payment, Diesel/Fuel, Labour, Data/Airtime, Sand/Stone/Trailer Hire, Toll Fee, Accommodation, Advertising, Food, Maintenance, Asset Purchases, Entertainment, Grass Purchase, Other.
 
-### Dashboard (`/`)
-- Compact hero: smaller display headline, single-line greeting.
-- Stats grid: 2×2 on phone, edge-to-edge cards with big numbers, tiny labels.
-- Merge "Today's jobs" + "Recent" into a single tabbed list (Today / Recent) — one card, less scrolling.
-- Remove the top-right dual New Quote/Invoice buttons (moved to the FAB).
-- Each list row: full-width tappable, chevron affordance, status pill.
+### Data model (added to `src/lib/store.ts`)
+```
+Expense {
+  id, createdAt, date (yyyy-mm-dd),
+  category, vendor, description,
+  amount, vatAmount?,
+  paymentMethod?, notes?,
+  receiptImage?: string (base64 or object URL),
+  linkedDocId?: string  // optional link to a job/invoice
+}
+```
+Store: `expenses[]`, `expenseCategories[]`, `upsertExpense`, `deleteExpense`, `upsertCategory`, `deleteCategory`. Persisted with existing zustand persist (bumped store name to preserve older data via migration merge).
 
-### Document editor (`/doc/$id`) — the most-used screen
-This is where the biggest wins live. Rework into a **stepper/section layout** optimized for typing on a phone:
+### AI parsing
+- Server function `parseReceipt` in `src/lib/expenses.functions.ts` using Lovable AI Gateway (`google/gemini-3-flash-preview`) with the image as `image_url` and a structured `Output.object` schema returning: `date, vendor, total, vat, category (from allowed list), description, paymentMethod`.
+- Client compresses camera image (max 1600px, JPEG q0.7) then base64-encodes and calls the server fn.
+- Category is matched against the user's current category list; falls back to "Other".
 
-- Sticky compact header: back · doc number · status pill · overflow menu (delete, duplicate).
-- **Sticky bottom action bar** with the primary send actions (WhatsApp big & green, Email, PDF as icons). Always thumb-reachable while scrolling long forms.
-- Sections stack vertically as collapsible cards, opened by default in this order:
-  1. **Customer** — name combobox full-width; phone + email stacked (not side-by-side on phone); big touch inputs (`h-11`).
-  2. **Route** — From / To autocompletes stacked; Disposal chip inline; "Calculate distance" button full width; km readout as pill.
-  3. **Line items** — each row becomes a mini-card: description on top row, qty × price on second row with `inputMode="decimal"`, trash icon right. "+ Catalog / KM / Blank" as a segmented action row.
-  4. **Totals & deposit** — sticky summary card with big total, deposit slider/steppers instead of a number field (with quick chips 0/25/50/100%). Deposit-paid as a switch.
-  5. **Schedule** — date picker button full-width.
-  6. **Notes** — collapsed by default.
-- Convert-to-invoice / Mark-paid move into the overflow menu; Mark-paid opens a bottom sheet with big Cash/EFT/Card buttons.
+### New route: `/expenses`
+Mobile-first, matches existing app style:
+- **Header**: Month selector (chevrons), total for month, "+" FAB opens camera.
+- **List**: grouped by day, each row: category chip · vendor · amount · thumbnail. Tap = edit sheet.
+- **Add flow (bottom sheet)**:
+  1. "Take photo" (camera) or "Choose from library" (`<input type=file accept=image/* capture=environment>`).
+  2. Show spinner "Reading slip…" while AI parses.
+  3. Pre-filled edit form: date, category (select), vendor, amount, VAT, payment method, description, notes. Receipt image preview with retake.
+  4. Save.
+- Manual add (skip photo) also supported.
 
-### Planner (`/planner`)
-Week view of 7 columns is unusable on 390px. Replace with mobile-specific view:
+### Shell / navigation
+Add "Expenses" (receipt icon) to bottom tab bar in `src/components/app/Shell.tsx`. Tabs become: Home · Planner · Expenses · Results · Settings (FAB in centre unchanged).
 
-- **Mobile default:** vertical "agenda" — a scroll list of upcoming days (Today, Tomorrow, then dated). Each day is a section header with the date + job count; jobs are full-width cards with category color stripe, customer, total, and a drag handle. Long-press to drag between days; tap to open.
-- Toolbar as a **segmented control**: Agenda · Week · Month. Week/Month still available but Week becomes horizontal-scroll snap columns; Month keeps the 7-col grid (already dense but readable).
-- Unscheduled jobs collapse into a pill at the top ("3 unscheduled ▾") that expands into a drop zone.
-- Prev/next/today become icon buttons with the date range as a tap-to-open month sheet.
+### Results page
+Add an "Expenses" stat card and a small category-breakdown list for the selected period. Net profit = invoiced (paid) − expenses.
 
-### Results (`/results`)
-- Stat grid 2×2 on phone with tighter padding.
-- Charts stack full-width; reduce heights to ~200px for mobile; hide `<Legend>` where the pie already labels slices; add a period selector (30d / 3m / 12m / YTD) as a segmented control instead of always showing all four charts.
-- Wrap in a horizontal snap-scroll strip for the two pies so the fold isn't half-charts.
+### Settings
+New "Expenses" tab: manage category list (add/rename/delete, alphabetical, same UX as Catalog editor).
 
-### Settings (`/settings`)
-- Tabs already OK; make the tab strip horizontally scrollable and sticky under the header.
-- Company / Banking / Billing forms: single column, `h-11` inputs, inputMode hints on numbers.
-- Catalog: already redesigned last turn — verify the collapsed rows keep 44px hit targets and the add/search row stacks on narrow widths.
+### Storage
+Receipt images stored inline as base64 in the persisted zustand store (consistent with the current fully-local architecture — no backend tables added). If a receipt exceeds ~1 MB after compression, we downscale further to stay within localStorage limits.
 
-### Design tokens & primitives
-- Add `--safe-bottom` env-aware padding utility for the bottom bar.
-- New `MobileTabBar`, `BottomSheet` (wrap shadcn `Sheet`), and `SegmentedControl` components.
-- Standardize input height: `h-11` on mobile, `h-9` on desktop via a `.field-input` utility.
-- Set `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` (already there) — add `theme-color` matching the header for PWA feel.
+### Files
+- edit `src/lib/store.ts` (types + state + actions + seed categories)
+- create `src/lib/expenses.functions.ts` (AI parse server fn)
+- create `src/routes/expenses.tsx` (list + add/edit sheet + camera)
+- create `src/components/app/ReceiptCapture.tsx` (camera/upload + compress)
+- edit `src/components/app/Shell.tsx` (add tab)
+- edit `src/routes/settings.tsx` (categories editor tab)
+- edit `src/routes/results.tsx` (expense totals + net profit)
 
-### Out of scope (unless asked)
-- Turning this into a real PWA (manifest, service worker, install prompt).
-- Offline queueing beyond the existing local store + debounced sync.
-- Deep gesture work (swipe-to-delete rows, pull-to-refresh).
-
-### Build order
-1. Shell + bottom tab bar + FAB sheet.
-2. Doc editor rework (biggest daily-use win).
-3. Planner agenda view.
-4. Dashboard condensation.
-5. Results + Settings polish.
+### Out of scope
+- Multi-user sync / cloud storage of receipts
+- Exporting expenses to PDF/CSV (can add later if you want)
+- OCR training / custom models — we rely on Gemini vision
