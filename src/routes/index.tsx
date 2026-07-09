@@ -3,7 +3,7 @@ import { Shell } from "@/components/app/Shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useStore, newId, docTotals, fmtMoney, type Doc } from "@/lib/store";
-import { Plus, FileText, Truck } from "lucide-react";
+import { Plus, FileText, Truck, Receipt } from "lucide-react";
 import { format } from "date-fns";
 
 export const Route = createFileRoute("/")({ component: Index });
@@ -14,12 +14,12 @@ function Index() {
   const today = format(new Date(), "yyyy-MM-dd");
   const todayJobs = docs.filter((d) => d.scheduledDate === today);
 
-  const newQuote = () => {
+  const newDoc = (type: "quote" | "invoice") => {
     const id = newId();
     const d: Doc = {
       id,
-      number: nextDocNumber("quote"),
-      type: "quote",
+      number: nextDocNumber(type),
+      type,
       status: "draft",
       createdAt: new Date().toISOString(),
       customer: { id: newId(), name: "", phone: "", email: "" },
@@ -49,9 +49,14 @@ function Index() {
           <h1 className="font-display text-5xl tracking-wide">DASHBOARD</h1>
           <p className="text-muted-foreground">Welcome back to {company.name}</p>
         </div>
-        <Button size="lg" onClick={newQuote} className="h-14 px-8 text-lg font-semibold">
-          <Plus className="mr-2 h-5 w-5" /> New Quote
-        </Button>
+        <div className="flex gap-2">
+          <Button size="lg" variant="outline" onClick={() => newDoc("invoice")} className="h-14 px-6 text-lg font-semibold">
+            <Receipt className="mr-2 h-5 w-5" /> New Invoice
+          </Button>
+          <Button size="lg" onClick={() => newDoc("quote")} className="h-14 px-6 text-lg font-semibold">
+            <Plus className="mr-2 h-5 w-5" /> New Quote
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
