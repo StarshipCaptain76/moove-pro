@@ -34,7 +34,7 @@ const DISPOSAL_SITE = {
   coords: { lat: -34.321459, lng: 21.437664 },
 };
 
-export const Route = createFileRoute("/doc/$id")({ component: DocPage });
+export const Route = createFileRoute("/doc/")({ component: DocPage });
 
 function DocPage() {
   const { id } = Route.useParams();

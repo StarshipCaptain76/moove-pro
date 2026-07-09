@@ -12,9 +12,10 @@ interface Props {
   catalog: CatalogItem[];
   currency: string;
   onPick: (c: CatalogItem) => void;
+  triggerClassName?: string;
 }
 
-export function CatalogPicker({ catalog, currency, onPick }: Props) {
+export function CatalogPicker({ catalog, currency, onPick, triggerClassName }: Props) {
   const [open, setOpen] = useState(false);
   const sorted = useMemo(
     () => [...catalog].sort((a, b) => a.name.localeCompare(b.name)),
@@ -23,7 +24,7 @@ export function CatalogPicker({ catalog, currency, onPick }: Props) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline">
+        <Button variant="outline" className={triggerClassName}>
           <Plus className="h-4 w-4 mr-1" /> Catalog <ChevronsUpDown className="h-3 w-3 ml-1 opacity-50" />
         </Button>
       </PopoverTrigger>
