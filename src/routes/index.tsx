@@ -58,8 +58,8 @@ function Index() {
       <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
         <Stat label="Outstanding" value={fmtMoney(stats.outstanding, billing.currency)} accent />
         <Stat label="Paid (month)" value={fmtMoney(stats.paidThisMonth, billing.currency)} />
-        <Stat label="Quotes" value={String(stats.quotes)} />
-        <Stat label="Invoices" value={String(stats.invoices)} />
+        <Stat label="Quotes (month)" value={String(stats.quotes)} />
+        <Stat label="Invoices (month)" value={String(stats.invoices)} />
       </div>
 
       <Card className="p-3 sm:p-4">
