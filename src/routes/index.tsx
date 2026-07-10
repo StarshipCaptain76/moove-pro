@@ -30,7 +30,12 @@ function Index() {
   }, []);
 
   const visible = docs.filter((d) => !d.archived);
-  const archived = docs.filter((d) => d.archived);
+  // Hide legacy archived quotes created before this cutoff — only quotes
+  // archived from today onward appear in the archived list.
+  const ARCHIVED_CUTOFF = "2026-07-10";
+  const archived = docs.filter(
+    (d) => d.archived && (d.createdAt ?? "") >= ARCHIVED_CUTOFF,
+  );
   const [showArchived, setShowArchived] = useState(false);
 
   const today = format(new Date(), "yyyy-MM-dd");
