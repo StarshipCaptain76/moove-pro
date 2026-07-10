@@ -504,9 +504,9 @@ function JobCard({ doc, currency, vat }: { doc: Doc; currency: string; vat: numb
       </div>
       <Link to="/doc/$id" params={{ id: doc.id }} className="text-primary underline text-[10px]">open</Link>
     </div>
-
   );
 }
+
 
 function DropZone({ id, children, className }: { id: string; children: React.ReactNode; className?: string }) {
   const { setNodeRef, isOver } = useDroppable({ id });
