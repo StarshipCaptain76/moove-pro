@@ -391,9 +391,11 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
         <div className="min-w-0">
           <div className="font-semibold text-sm truncate">{doc.customer.name || "—"}</div>
           <div className="text-[11px] text-muted-foreground truncate">{doc.number} · {doc.toAddress || "no address"}</div>
+          <div className="text-[11px] font-medium truncate">{jobSummary(doc)}</div>
         </div>
         <div className="text-sm font-mono font-semibold shrink-0">{fmtMoney(t.total, currency)}</div>
       </Link>
+
     </div>
   );
 }
