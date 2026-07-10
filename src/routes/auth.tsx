@@ -1,8 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useServerFn } from "@tanstack/react-start";
-import { ensureDylanUser } from "@/lib/setup.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +17,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const ensure = useServerFn(ensureDylanUser);
-  const [email, setEmail] = useState("dylan@moove.local");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -35,12 +32,7 @@ function AuthPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      let attempt = await supabase.auth.signInWithPassword({ email, password });
-      if (attempt.error && /invalid/i.test(attempt.error.message)) {
-        // First-ever sign-in for the seeded account: create it, then retry.
-        await ensure();
-        attempt = await supabase.auth.signInWithPassword({ email, password });
-      }
+      const attempt = await supabase.auth.signInWithPassword({ email, password });
       if (attempt.error) throw attempt.error;
       toast.success("Signed in");
       navigate({ to: "/" });

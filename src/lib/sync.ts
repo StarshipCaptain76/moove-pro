@@ -270,9 +270,6 @@ async function loadAll() {
   emit();
 
   try {
-    // Copy any legacy workspace blob into per-row tables (idempotent).
-    await supabase.rpc("migrate_workspace_blob");
-
     const [profileRes, catRes, custRes, docsRes, expRes, catCatRes] = await Promise.all([
       supabase.from("company_profile").select("*").eq("owner_user_id", uid).maybeSingle(),
       supabase.from("catalog_items").select("*").eq("owner_user_id", uid),
