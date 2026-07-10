@@ -410,4 +410,3 @@ export function getShareLink(): string | null {
 export function flushSync(): Promise<void> {
   return Promise.resolve();
 }
-}
