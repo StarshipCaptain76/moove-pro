@@ -170,8 +170,15 @@ function SyncBadge() {
     const unsub = subscribeSync(setS);
     return () => { unsub(); };
   }, []);
-  const ok = s.status === "synced" || s.status === "syncing";
   const Icon = s.status === "error" ? CloudOff : Cloud;
+  const statusClass =
+    s.status === "synced"
+      ? "bg-green-500/20 text-green-500 hover:bg-green-500/30"
+      : s.status === "error"
+        ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
+        : s.status === "loading" || s.status === "syncing"
+          ? "bg-amber-500/20 text-amber-500 hover:bg-amber-500/30"
+          : "bg-white/10 hover:bg-white/20";
   const copy = async () => {
     const link = getShareLink();
     if (!link) {
@@ -188,7 +195,7 @@ function SyncBadge() {
       title={s.error || (s.authed ? "Signed in — auto-syncing" : s.workspaceId ? "Copy sync link" : "Connecting…")}
       className={cn(
         "px-2 py-1.5 rounded flex items-center gap-1.5 text-xs font-medium transition-colors",
-        ok ? "bg-white/10 hover:bg-white/20" : "bg-destructive/20 hover:bg-destructive/30",
+        statusClass,
       )}
     >
       <Icon className="h-3.5 w-3.5" />
@@ -197,6 +204,7 @@ function SyncBadge() {
     </button>
   );
 }
+
 
 function AuthButton() {
   const [email, setEmail] = useState<string | null>(null);
