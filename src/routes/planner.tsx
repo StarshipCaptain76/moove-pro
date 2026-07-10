@@ -81,7 +81,7 @@ type View = "agenda" | "week" | "month";
 function PlannerPage() {
   const { docs, upsertDoc, billing } = useStore();
   const [view, setView] = useState<View>("agenda");
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [weekStart, setWeekStart] = useState(() => new Date());
   const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()));
   const [showUnsched, setShowUnsched] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -176,7 +176,7 @@ function PlannerPage() {
           }><ChevronRight className="h-4 w-4" /></Button>
           <Button size="sm" variant="secondary" className="h-10" onClick={() =>
             view === "week"
-              ? setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))
+              ? setWeekStart(new Date())
               : setMonthAnchor(startOfMonth(new Date()))
           }>Today</Button>
         </div>
