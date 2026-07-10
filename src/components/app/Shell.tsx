@@ -230,7 +230,7 @@ function AuthButton() {
       className="ml-1 px-2 py-1.5 rounded flex items-center gap-1.5 text-xs font-medium bg-white/10 hover:bg-white/20"
     >
       <User className="h-3.5 w-3.5" />
-      <span className="hidden sm:inline">{email === "moove@mweb.co.za" ? "Dylan" : email}</span>
+      <span>{email === "moove@mweb.co.za" ? "Dylan" : email}</span>
       <LogOut className="h-3.5 w-3.5 opacity-60" />
     </button>
   );
