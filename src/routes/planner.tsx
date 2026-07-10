@@ -60,8 +60,13 @@ function jobSummary(doc: Doc): string {
   return Array.from(found).slice(0, 3).join(", ") || "Job";
 }
 
+function PaymentIndicator({ doc }: { doc: Doc }) {
+  if (doc.status === "paid") return <span className="h-2 w-2 rounded-full bg-green-500" title="Paid" />;
+  return <span className="text-[10px] uppercase font-bold px-1 py-0.5 rounded bg-red-500 text-white leading-none">unpaid</span>;
+}
 
 type View = "agenda" | "week" | "month";
+
 
 function PlannerPage() {
   const { docs, upsertDoc, billing } = useStore();
@@ -388,19 +393,22 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
         <GripVertical className="h-4 w-4" />
       </button>
       <Link to="/doc/$id" params={{ id: doc.id }} className={cn("flex-1 flex items-center justify-between py-2 pr-3 gap-2", c.card)}>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="font-semibold text-sm truncate">{doc.customer.name || "—"}</div>
           <div className="text-[11px] text-muted-foreground truncate">{doc.number} · {doc.toAddress || "no address"}</div>
           <div className="text-[11px] font-medium truncate">{jobSummary(doc)}</div>
         </div>
-        <div className="text-sm font-mono font-semibold shrink-0">{fmtMoney(t.total, currency)}</div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="text-sm font-mono font-semibold">{fmtMoney(t.total, currency)}</div>
+          <PaymentIndicator doc={doc} />
+        </div>
       </Link>
-
     </div>
   );
 }
 
 function DayCol({ date, iso, docs, currency, vat }: { date: Date; iso: string; docs: Doc[]; currency: string; vat: number }) {
+
   const { setNodeRef, isOver } = useDroppable({ id: iso });
   const today = isToday(date);
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
@@ -468,13 +476,14 @@ function MiniJob({ doc }: { doc: Doc }) {
   return (
     <Link to="/doc/$id" params={{ id: doc.id }}>
       <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
-        className={cn("rounded px-1 py-0.5 truncate border-l-2 cursor-grab text-[10px]", c.card, c.border, isDragging && "opacity-50")}
+        className={cn("rounded px-1 py-0.5 truncate border-l-2 cursor-grab text-[10px] flex items-center gap-1", c.card, c.border, isDragging && "opacity-50")}
         title={`${doc.customer.name || "—"} · ${doc.number} · ${jobSummary(doc)}`}>
+        <PaymentIndicator doc={doc} />
         {doc.customer.name || doc.number}
-
       </div>
     </Link>
   );
+
 }
 
 function JobCard({ doc, currency, vat }: { doc: Doc; currency: string; vat: number }) {
@@ -489,12 +498,15 @@ function JobCard({ doc, currency, vat }: { doc: Doc; currency: string; vat: numb
       className={cn("rounded p-2 text-xs cursor-grab border-l-4", c.card, c.border, isDragging && "opacity-50")}>
       <div className="font-semibold truncate">{doc.customer.name || "—"}</div>
       <div className="opacity-80 truncate">{jobSummary(doc)}</div>
-      <div className="opacity-80">{fmtMoney(t.total, currency)}</div>
-
+      <div className="flex items-center justify-between gap-1">
+        <div className="opacity-80">{fmtMoney(t.total, currency)}</div>
+        <PaymentIndicator doc={doc} />
+      </div>
       <Link to="/doc/$id" params={{ id: doc.id }} className="text-primary underline text-[10px]">open</Link>
     </div>
   );
 }
+
 
 function DropZone({ id, children, className }: { id: string; children: React.ReactNode; className?: string }) {
   const { setNodeRef, isOver } = useDroppable({ id });
