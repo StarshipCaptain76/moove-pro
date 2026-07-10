@@ -154,16 +154,6 @@ interface State {
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-const numberSuffix = (value: string, prefix: string) => {
-  const trimmed = value.trim();
-  const escapedPrefix = prefix.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const prefixed = escapedPrefix
-    ? trimmed.match(new RegExp(`^${escapedPrefix}[\\s-]*(\\d+)$`, "i"))
-    : null;
-  const fallback = trimmed.match(/(\d+)$/);
-  return Number((prefixed ?? fallback)?.[1] ?? 0);
-};
-
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
@@ -233,19 +223,13 @@ export const useStore = create<State>()(
       setBanking: (b) => set({ banking: b }),
       setBilling: (b) => set({ billing: b }),
       nextDocNumber: (t) => {
-        const { billing: b, docs } = get();
+        const { billing: b } = get();
         if (t === "quote") {
-          const highest = docs
-            .filter((d) => d.type === "quote")
-            .reduce((max, d) => Math.max(max, numberSuffix(d.number, b.quotePrefix)), 0);
-          const n = Math.max(b.nextQuoteNo, highest + 1);
+          const n = b.nextQuoteNo;
           set({ billing: { ...b, nextQuoteNo: n + 1 } });
           return `${b.quotePrefix}-${n}`;
         }
-        const highest = docs
-          .filter((d) => d.type === "invoice")
-          .reduce((max, d) => Math.max(max, numberSuffix(d.number, b.invoicePrefix)), 0);
-        const n = Math.max(b.nextInvoiceNo, highest + 1);
+        const n = b.nextInvoiceNo;
         set({ billing: { ...b, nextInvoiceNo: n + 1 } });
         return `${b.invoicePrefix}-${n}`;
       },
