@@ -362,11 +362,13 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const t = docTotals(doc, vat);
   const c = CATEGORIES[jobCategory(doc)];
+  const open = usePlannerActions();
+  const lp = useLongPress(() => open(doc));
   return (
     <div ref={setNodeRef} style={style} className={cn(
       "flex items-stretch rounded-lg border-l-4 bg-background border overflow-hidden",
       c.border, isDragging && "opacity-50",
-    )}>
+    )} {...lp}>
       <button {...listeners} {...attributes} className="px-2 flex items-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing">
         <GripVertical className="h-4 w-4" />
       </button>
