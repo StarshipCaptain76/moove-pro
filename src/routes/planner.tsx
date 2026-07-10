@@ -44,6 +44,23 @@ function jobCategory(doc: Doc): CategoryKey {
   return "other";
 }
 
+const SUMMARY_KEYWORDS = [
+  "rubble", "garden", "furniture", "sand", "grass", "tree", "rock", "brick", "soil", "concrete",
+  "tiles", "wood", "general", "appliances", "boxes", "rubbish", "waste", "removal", "labour", "packing",
+];
+
+function jobSummary(doc: Doc): string {
+  const found = new Set<string>();
+  doc.items.forEach((item) => {
+    const text = item.description.toLowerCase();
+    SUMMARY_KEYWORDS.forEach((kw) => {
+      if (text.includes(kw)) found.add(kw.charAt(0).toUpperCase() + kw.slice(1));
+    });
+  });
+  return Array.from(found).slice(0, 3).join(", ") || "Job";
+}
+
+
 type View = "agenda" | "week" | "month";
 
 function PlannerPage() {
