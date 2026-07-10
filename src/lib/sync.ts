@@ -165,6 +165,24 @@ function schedulePush() {
   pushTimer = setTimeout(push, 600);
 }
 
+// Force an immediate push, bypassing the 600ms debounce. Use for critical
+// actions (mark paid, convert to invoice) so the write can't be lost to a
+// navigation or reload happening within the debounce window.
+export async function flushSync() {
+  if (suppressPush) return;
+  if (pushTimer) {
+    clearTimeout(pushTimer);
+    pushTimer = null;
+  }
+  markDirty();
+  try {
+    await push();
+  } catch {
+    // Errors are surfaced via the SyncBadge state; swallow here so callers
+    // don't need to handle it inline.
+  }
+}
+
 function shouldPreserveLocalDoc(doc: Doc): boolean {
   if (!doc.archived) return true;
   const today = new Date().toISOString().slice(0, 10);
