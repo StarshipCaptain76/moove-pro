@@ -1,24 +1,28 @@
-## Add swipe navigation to Planner views
+## Show historical imported jobs on the planner
 
-Enable touch swipe gestures on `/planner` so the user can navigate through time without tapping the chevron buttons.
+### Problem
 
-### Behavior
+The 49 imported bank docs are `status: "paid"`, `archived: true`, `paidAt: "2026-05-02"` etc., with no `scheduledDate`. In `src/routes/planner.tsx`, `paidDate(doc)` currently returns `undefined` when a doc is archived and its paid date isn't today, so archived historical jobs never appear on the calendar in any view.
 
-- **Agenda view**: swipe left/right shifts the visible window by 1 day (advances/rewinds the "start from today" anchor by ±1 day).
-- **Week view**: swipe left/right shifts `weekStart` by ±7 days.
-- **Month view**: swipe left/right shifts `monthAnchor` by ±1 month.
+### Change
 
-Swipe right → previous period. Swipe left → next period. Chevron buttons and Today button remain unchanged.
+In `src/routes/planner.tsx`, relax `paidDate()` so any paid doc with a `paidAt` is placed on the calendar on its paid date, regardless of `archived`:
 
-### Technical details
+```ts
+const paidDate = (doc: Doc) => {
+  if (doc.status !== "paid" || !doc.paidAt) return undefined;
+  return format(new Date(doc.paidAt), "yyyy-MM-dd");
+};
+```
 
-- Edit only `src/routes/planner.tsx`.
-- Add a small local `useSwipe` hook (touch + pointer events) with a horizontal threshold (~50px) and vertical-dominance guard so vertical scrolling isn't hijacked.
-- Currently Agenda has no anchor state — it always starts from `new Date()`. Introduce `agendaStart` state (default `new Date()`) and derive the 60-day window from it. Add a "Today" button for Agenda too (only shown when `agendaStart` isn't today) so users can return after swiping.
-- Wrap each view's content container with the swipe handlers; dispatch to the correct setter based on active `view`.
-- Attach `touch-action: pan-y` to the swipe container so vertical scroll still works while horizontal swipes are captured.
-- Ensure swipe handlers don't interfere with existing `@dnd-kit` drag (PointerSensor already requires 8px activation; swipe listens on the container, drag listeners are on job cards — no conflict expected, will verify).
+Effect: historical imported jobs (and any future archived-after-paid jobs) show up on their paid date in Agenda, Week, and Month views. They remain paid (green dot indicator) and open the job when tapped.
 
-### Files
+### Side effects
 
-- `src/routes/planner.tsx` — add `useSwipe`, add `agendaStart` state, wrap the three view containers with swipe handlers.
+- Agenda view shows days with historical jobs across the full 60-day window from the anchor. Since a user can now swipe backwards (previous plan), they can browse into May 2026 and see the imported history.
+- Unscheduled pill logic is unchanged (only affects `accepted` jobs).
+- No DB changes, no store changes.
+
+### File
+
+- `src/routes/planner.tsx` — single-function edit to `paidDate`.
