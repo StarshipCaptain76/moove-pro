@@ -123,6 +123,7 @@ function PlannerPage() {
   const markPaid = (m: PayMethod) => {
     if (!actionDoc) return;
     upsertDoc({ ...actionDoc, status: "paid", archived: false, paymentMethod: m, paidAt: new Date().toISOString(), scheduledDate: actionDoc.scheduledDate ?? todayIso() });
+    void flushSync();
     toast.success(`Marked paid (${m.toUpperCase()})`);
     closeActions();
   };
