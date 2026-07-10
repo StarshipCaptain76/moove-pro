@@ -81,7 +81,7 @@ type View = "agenda" | "week" | "month";
 function PlannerPage() {
   const { docs, upsertDoc, billing } = useStore();
   const [view, setView] = useState<View>("agenda");
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [weekStart, setWeekStart] = useState(() => new Date());
   const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()));
   const [showUnsched, setShowUnsched] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
