@@ -15,6 +15,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { DatePicker } from "@/components/app/DatePicker";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { createContext, useContext } from "react";
+
+const JobActionsCtx = createContext<((d: Doc) => void) | null>(null);
+function usePlannerActions() {
+  return useContext(JobActionsCtx) ?? (() => {});
+}
 
 export const Route = createFileRoute("/planner")({ component: PlannerPage });
 
