@@ -335,13 +335,14 @@ function JobActionSheet({
 function Legend() {
   return (
     <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-[10px] text-muted-foreground">
-      {(Object.keys(CATEGORIES) as CategoryKey[]).map((k) => (
+      {(Object.keys(MATERIALS) as MaterialKey[]).map((k) => (
         <div key={k} className="flex items-center gap-1">
-          <span className={`inline-block h-2 w-2 rounded-full ${CATEGORIES[k].dot}`} />
-          <span>{CATEGORIES[k].label}</span>
+          <span className={`inline-block h-2 w-2 rounded-full ${MATERIALS[k].dot}`} />
+          <span>{MATERIALS[k].label}</span>
         </div>
       ))}
     </div>
+
   );
 }
 
