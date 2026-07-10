@@ -158,8 +158,10 @@ function List({ docs, currency, vat }: { docs: Doc[]; currency: string; vat: num
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${d.type === "invoice" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{d.type}</span>
                   <span className="text-xs font-mono text-muted-foreground">{d.number}</span>
-                  {d.status === "paid" && <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-green-600 text-white">paid</span>}
+                  {d.status === "paid" && <span className="h-2 w-2 rounded-full bg-green-500" title="Paid" />}
+                  {d.type === "invoice" && d.status !== "paid" && <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-red-500 text-white">unpaid</span>}
                 </div>
+
                 <div className="font-medium truncate">{d.customer.name || "—"}</div>
               </div>
               <div className="text-right shrink-0">
