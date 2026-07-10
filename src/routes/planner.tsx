@@ -509,6 +509,7 @@ function JobCard({ doc, currency, vat }: { doc: Doc; currency: string; vat: numb
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
       className={cn("rounded p-2 text-xs cursor-grab border-l-4", c.card, c.border, isDragging && "opacity-50")}>
       <div className="font-semibold truncate">{doc.customer.name || "—"}</div>
+      <div className="opacity-80 truncate">{doc.fromAddress || "no address"}</div>
       <div className="opacity-80 truncate">{jobSummary(doc)}</div>
       <div className="flex items-center justify-between gap-1">
         <div className="opacity-80">{fmtMoney(t.total, currency)}</div>
