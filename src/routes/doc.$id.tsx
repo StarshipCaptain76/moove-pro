@@ -28,6 +28,7 @@ import { Slider } from "@/components/ui/slider";
 import { useServerFn } from "@tanstack/react-start";
 import { routeDistance } from "@/lib/maps.functions";
 import { flushSync } from "@/lib/sync";
+import { useMemo } from "react";
 const nn = (v: number) => (isFinite(v) && v > 0 ? v : 0);
 
 
@@ -45,6 +46,26 @@ function DocPage() {
   const doc = docs.find((d) => d.id === id);
   const distanceFn = useServerFn(routeDistance);
   const [calcing, setCalcing] = useState(false);
+
+  // Build a full picker list by unioning the customers store with unique
+  // customers embedded on past docs (historical imports never populated the
+  // customers array, so they only exist inside their doc records).
+  const allCustomers = useMemo(() => {
+    const seen = new Map<string, typeof customers[number]>();
+    const keyOf = (c: { name?: string; phone?: string; email?: string }) =>
+      `${(c.name ?? "").trim().toLowerCase()}|${(c.phone ?? "").trim()}|${(c.email ?? "").trim().toLowerCase()}`;
+    customers.forEach((c) => {
+      if (!c.name) return;
+      seen.set(keyOf(c), c);
+    });
+    docs.forEach((d) => {
+      const c = d.customer;
+      if (!c?.name) return;
+      const k = keyOf(c);
+      if (!seen.has(k)) seen.set(k, c);
+    });
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [customers, docs]);
 
   if (!doc) {
     return (
@@ -152,7 +173,7 @@ function DocPage() {
                 </div>
                 <CustomerCombobox
                   value={doc.customer.name}
-                  customers={customers}
+                  customers={allCustomers}
                   onType={(name) => updateCust({ name })}
                   onPick={(c) => upsertDoc({ ...doc, customer: { ...c } })}
                 />
