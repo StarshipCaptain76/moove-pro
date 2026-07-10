@@ -183,13 +183,11 @@ function PlannerPage() {
         )}
 
         {view === "week" && (
-          <div className="flex md:grid md:grid-cols-7 gap-2 overflow-x-auto snap-x snap-mandatory -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-0 md:overflow-visible pb-2">
+          <div className="space-y-2 md:grid md:grid-cols-7 md:gap-2 md:space-y-0">
             {weekDays.map((d) => {
               const iso = format(d, "yyyy-MM-dd");
               return (
-                <div key={iso} className="snap-start shrink-0 w-[75vw] md:w-auto">
-                  <DayCol date={d} iso={iso} docs={byDay(iso)} currency={billing.currency} vat={billing.vatPct} />
-                </div>
+                <DayCol key={iso} date={d} iso={iso} docs={byDay(iso)} currency={billing.currency} vat={billing.vatPct} />
               );
             })}
           </div>
