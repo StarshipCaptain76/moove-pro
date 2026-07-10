@@ -487,8 +487,9 @@ function JobCard({ doc, currency, vat }: { doc: Doc; currency: string; vat: numb
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
       className={cn("rounded p-2 text-xs cursor-grab border-l-4", c.card, c.border, isDragging && "opacity-50")}>
       <div className="font-semibold truncate">{doc.customer.name || "—"}</div>
-      <div className="opacity-80 truncate">{doc.number}</div>
+      <div className="opacity-80 truncate">{jobSummary(doc)}</div>
       <div className="opacity-80">{fmtMoney(t.total, currency)}</div>
+
       <Link to="/doc/$id" params={{ id: doc.id }} className="text-primary underline text-[10px]">open</Link>
     </div>
   );
