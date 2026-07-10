@@ -176,7 +176,7 @@ function PlannerPage() {
           }><ChevronRight className="h-4 w-4" /></Button>
           <Button size="sm" variant="secondary" className="h-10" onClick={() =>
             view === "week"
-              ? setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))
+              ? setWeekStart(new Date())
               : setMonthAnchor(startOfMonth(new Date()))
           }>Today</Button>
         </div>
