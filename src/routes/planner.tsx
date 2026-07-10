@@ -384,16 +384,38 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
 function DayCol({ date, iso, docs, currency, vat }: { date: Date; iso: string; docs: Doc[]; currency: string; vat: number }) {
   const { setNodeRef, isOver } = useDroppable({ id: iso });
   const today = isToday(date);
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
   return (
-    <div ref={setNodeRef} className={cn(
-      "rounded border min-h-64 p-2",
-      isOver ? "border-primary bg-primary/5" : "border-border bg-card",
-      today && "ring-2 ring-primary",
-    )}>
-      <div className="text-xs uppercase text-muted-foreground">{format(date, "EEE")}</div>
-      <div className="font-display text-2xl mb-2">{format(date, "d")}</div>
-      <div className="space-y-1.5">
-        {docs.map((d) => <JobCard key={d.id} doc={d} currency={currency} vat={vat} />)}
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "rounded-lg border overflow-hidden md:min-h-64",
+        isOver ? "border-primary bg-primary/5" : "border-border bg-card",
+        today && "ring-2 ring-primary",
+        isWeekend && !today && "bg-muted/30",
+      )}
+    >
+      {/* Header — horizontal on mobile, stacked on desktop */}
+      <div
+        className={cn(
+          "flex items-baseline gap-2 px-3 py-2 border-b bg-muted/40 md:flex-col md:items-start md:gap-0 md:bg-transparent md:border-b-0 md:pb-1",
+          today && "text-primary",
+        )}
+      >
+        <span className="text-xs uppercase font-semibold tracking-wide">{format(date, "EEE")}</span>
+        <span className="font-display text-2xl leading-none md:mt-0.5">{format(date, "d")}</span>
+        <span className="text-[10px] uppercase text-muted-foreground md:hidden">{format(date, "MMM")}</span>
+        <span className="ml-auto text-[11px] text-muted-foreground md:hidden">
+          {docs.length === 0 ? "no jobs" : `${docs.length} job${docs.length === 1 ? "" : "s"}`}
+        </span>
+      </div>
+
+      <div className="p-2 space-y-1.5 min-h-[3rem]">
+        {docs.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground text-center py-1.5 md:py-3">—</p>
+        ) : (
+          docs.map((d) => <JobCard key={d.id} doc={d} currency={currency} vat={vat} />)
+        )}
       </div>
     </div>
   );
