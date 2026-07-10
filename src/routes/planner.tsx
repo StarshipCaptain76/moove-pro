@@ -477,13 +477,14 @@ function MiniJob({ doc }: { doc: Doc }) {
   return (
     <Link to="/doc/$id" params={{ id: doc.id }}>
       <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
-        className={cn("rounded px-1 py-0.5 truncate border-l-2 cursor-grab text-[10px]", c.card, c.border, isDragging && "opacity-50")}
+        className={cn("rounded px-1 py-0.5 truncate border-l-2 cursor-grab text-[10px] flex items-center gap-1", c.card, c.border, isDragging && "opacity-50")}
         title={`${doc.customer.name || "—"} · ${doc.number} · ${jobSummary(doc)}`}>
+        <PaymentIndicator doc={doc} />
         {doc.customer.name || doc.number}
-
       </div>
     </Link>
   );
+
 }
 
 function JobCard({ doc, currency, vat }: { doc: Doc; currency: string; vat: number }) {
