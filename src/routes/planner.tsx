@@ -60,6 +60,12 @@ function jobSummary(doc: Doc): string {
   return Array.from(found).slice(0, 3).join(", ") || "Job";
 }
 
+function PaymentIndicator({ doc }: { doc: Doc }) {
+  if (doc.status === "paid") return <span className="h-2 w-2 rounded-full bg-green-500" title="Paid" />;
+  return <span className="text-[10px] uppercase font-bold px-1 py-0.5 rounded bg-red-500 text-white leading-none">unpaid</span>;
+}
+
+
 
 type View = "agenda" | "week" | "month";
 
