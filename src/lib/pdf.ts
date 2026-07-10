@@ -167,3 +167,10 @@ export async function pdfBlobUrl(doc: Doc, company: Company, banking: Banking, b
   const blob = pdf.output("blob");
   return URL.createObjectURL(blob);
 }
+
+export async function pdfFile(doc: Doc, company: Company, banking: Banking, billing: BillingSettings): Promise<File> {
+  const pdf = await generatePdf(doc, company, banking, billing);
+  const blob = pdf.output("blob");
+  const name = `${doc.number}-${doc.customer.name || "customer"}.pdf`;
+  return new File([blob], name, { type: "application/pdf" });
+}
