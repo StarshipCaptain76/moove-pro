@@ -110,6 +110,7 @@ function PlannerPage() {
 
   return (
     <Shell>
+     <JobActionsCtx.Provider value={openActions}>
       {/* View switcher */}
       <div className="inline-flex rounded-lg border p-0.5 bg-muted mb-3 w-full sm:w-auto">
         {(["agenda", "week", "month"] as View[]).map((v) => (
