@@ -44,6 +44,23 @@ function jobCategory(doc: Doc): CategoryKey {
   return "other";
 }
 
+const SUMMARY_KEYWORDS = [
+  "rubble", "garden", "furniture", "sand", "grass", "tree", "rock", "brick", "soil", "concrete",
+  "tiles", "wood", "general", "appliances", "boxes", "rubbish", "waste", "removal", "labour", "packing",
+];
+
+function jobSummary(doc: Doc): string {
+  const found = new Set<string>();
+  doc.items.forEach((item) => {
+    const text = item.description.toLowerCase();
+    SUMMARY_KEYWORDS.forEach((kw) => {
+      if (text.includes(kw)) found.add(kw.charAt(0).toUpperCase() + kw.slice(1));
+    });
+  });
+  return Array.from(found).slice(0, 3).join(", ") || "Job";
+}
+
+
 type View = "agenda" | "week" | "month";
 
 function PlannerPage() {
@@ -374,9 +391,11 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
         <div className="min-w-0">
           <div className="font-semibold text-sm truncate">{doc.customer.name || "—"}</div>
           <div className="text-[11px] text-muted-foreground truncate">{doc.number} · {doc.toAddress || "no address"}</div>
+          <div className="text-[11px] font-medium truncate">{jobSummary(doc)}</div>
         </div>
         <div className="text-sm font-mono font-semibold shrink-0">{fmtMoney(t.total, currency)}</div>
       </Link>
+
     </div>
   );
 }
@@ -450,8 +469,9 @@ function MiniJob({ doc }: { doc: Doc }) {
     <Link to="/doc/$id" params={{ id: doc.id }}>
       <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
         className={cn("rounded px-1 py-0.5 truncate border-l-2 cursor-grab text-[10px]", c.card, c.border, isDragging && "opacity-50")}
-        title={`${doc.customer.name || "—"} · ${doc.number}`}>
+        title={`${doc.customer.name || "—"} · ${doc.number} · ${jobSummary(doc)}`}>
         {doc.customer.name || doc.number}
+
       </div>
     </Link>
   );
@@ -468,8 +488,9 @@ function JobCard({ doc, currency, vat }: { doc: Doc; currency: string; vat: numb
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
       className={cn("rounded p-2 text-xs cursor-grab border-l-4", c.card, c.border, isDragging && "opacity-50")}>
       <div className="font-semibold truncate">{doc.customer.name || "—"}</div>
-      <div className="opacity-80 truncate">{doc.number}</div>
+      <div className="opacity-80 truncate">{jobSummary(doc)}</div>
       <div className="opacity-80">{fmtMoney(t.total, currency)}</div>
+
       <Link to="/doc/$id" params={{ id: doc.id }} className="text-primary underline text-[10px]">open</Link>
     </div>
   );
