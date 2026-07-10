@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Shell } from "@/components/app/Shell";
 import { openWhatsApp } from "@/lib/whatsapp";
+import { buildShareMessage, shareSubject } from "@/lib/share-message";
+import { sendEmailWithPdf } from "@/lib/send-email";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,15 +101,20 @@ function DocPage() {
 
   const send = async (channel: "wa" | "email") => {
     if (!doc.customer.name) return toast.error("Add customer name first");
-    try { await downloadPdf(doc, company, banking, billing); } catch { /* ignore */ }
-    const msg = `Hi ${doc.customer.name},\n\nHere is your ${doc.type} ${doc.number} from ${company.name}.\nTotal: ${fmtMoney(t.total, billing.currency)}\nDeposit (${doc.depositPct}%): ${fmtMoney(t.deposit, billing.currency)}\n\nBanking:\n${banking.bank} • Acc ${banking.accountNumber} • Branch ${banking.branchCode}\nRef: ${doc.number}\n\nThanks!\n${company.name}`;
+    const msg = buildShareMessage(doc, company, banking, billing);
     if (channel === "wa") {
       if (!doc.customer.phone) return toast.error("Add customer phone");
+      try { await downloadPdf(doc, company, banking, billing); } catch { /* ignore */ }
       const ok = openWhatsApp(doc.customer.phone, msg);
       if (!ok) return toast.error("Invalid phone number");
     } else {
       if (!doc.customer.email) return toast.error("Add customer email");
-      window.location.href = `mailto:${doc.customer.email}?subject=${encodeURIComponent(`${doc.type === "quote" ? "Quote" : "Invoice"} ${doc.number} from ${company.name}`)}&body=${encodeURIComponent(msg)}`;
+      try {
+        await sendEmailWithPdf(doc, company, banking, billing, msg, shareSubject(doc, company));
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Email failed");
+        return;
+      }
     }
     if (doc.status === "draft") update({ status: "sent" });
   };
