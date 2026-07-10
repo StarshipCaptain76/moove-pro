@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod } from "@/lib/store";
 import { downloadPdf } from "@/lib/pdf";
 import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -28,7 +28,6 @@ import { Slider } from "@/components/ui/slider";
 import { useServerFn } from "@tanstack/react-start";
 import { routeDistance } from "@/lib/maps.functions";
 import { flushSync } from "@/lib/sync";
-import { useMemo } from "react";
 const nn = (v: number) => (isFinite(v) && v > 0 ? v : 0);
 
 
