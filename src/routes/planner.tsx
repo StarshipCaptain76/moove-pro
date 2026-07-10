@@ -2,15 +2,19 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Shell } from "@/components/app/Shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useStore, docTotals, fmtMoney, type Doc } from "@/lib/store";
+import { useStore, docTotals, fmtMoney, type Doc, type PayMethod } from "@/lib/store";
 import {
   addDays, addMonths, endOfMonth, endOfWeek, format, isSameMonth, isToday, isTomorrow,
   startOfMonth, startOfWeek,
 } from "date-fns";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { ChevronLeft, ChevronRight, ChevronDown, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, GripVertical, Check, X, CalendarDays, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { DatePicker } from "@/components/app/DatePicker";
+import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/planner")({ component: PlannerPage });
 
