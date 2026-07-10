@@ -120,7 +120,7 @@ function DocPage() {
   };
 
   const markPaid = (m: PayMethod) => {
-    update({ status: "paid", paymentMethod: m, paidAt: new Date().toISOString() });
+    update({ status: "paid", paymentMethod: m, paidAt: new Date().toISOString(), scheduledDate: doc.scheduledDate ?? new Date().toISOString().slice(0, 10) });
     toast.success(`Marked paid (${m.toUpperCase()})`);
   };
 
