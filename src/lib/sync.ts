@@ -34,6 +34,14 @@ export function subscribeSync(l: Listener) {
   return () => listeners.delete(l);
 }
 
+function getStoredWorkspace(): { id: string; token: string } | null {
+  if (typeof window === "undefined") return null;
+  const id = localStorage.getItem(LS_KEY);
+  const token = localStorage.getItem(LS_TOKEN_KEY);
+  if (!id || !token || !UUID_RE.test(id) || !UUID_RE.test(token)) return null;
+  return { id, token };
+}
+
 function readIdFromUrl(): { id: string; token: string | null } | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
@@ -101,6 +109,9 @@ function snapshot() {
     catalog: s.catalog,
     customers: s.customers,
     docs: s.docs,
+    expenses: s.expenses,
+    expenseCategories: s.expenseCategories,
+    density: s.density,
   };
 }
 
@@ -152,11 +163,25 @@ function applyCloudData(data: unknown) {
     ...(cloud.catalog && { catalog: cloud.catalog }),
     ...(cloud.customers && { customers: cloud.customers }),
     ...(cloud.docs && { docs: cloud.docs }),
+    ...(cloud.expenses && { expenses: cloud.expenses }),
+    ...(cloud.expenseCategories && { expenseCategories: cloud.expenseCategories }),
+    ...(cloud.density && { density: cloud.density }),
   }));
   suppressPush = false;
 }
 
+async function claimStoredWorkspaceForUser() {
+  const stored = getStoredWorkspace();
+  if (!stored) return;
+  const { error } = await supabase.rpc("claim_workspace", {
+    p_id: stored.id,
+    p_token: stored.token,
+  });
+  if (error) throw error;
+}
+
 async function loadAuthedWorkspace() {
+  await claimStoredWorkspaceForUser();
   const { data, error } = await supabase.rpc("get_my_workspace");
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : (data as { id: string; data: unknown } | null);
@@ -168,7 +193,11 @@ async function loadAuthedWorkspace() {
   const cloudEmpty = !cloud || (typeof cloud === "object" && Object.keys(cloud as object).length === 0);
   const local = snapshot();
   const localHasContent =
-    local.docs?.length || local.catalog?.length || local.customers?.length || local.company?.name;
+    local.docs?.length ||
+    local.catalog?.length ||
+    local.customers?.length ||
+    local.expenses?.length ||
+    local.company?.name;
   if (cloudEmpty && localHasContent) {
     await supabase.rpc("save_my_workspace", { p_data: local as unknown as Json });
   } else {
@@ -232,12 +261,11 @@ async function reinitAfterAuth() {
       await loadAuthedWorkspace();
     } else {
       // Signed out: fall back to anonymous workspace stored locally.
-      const stored = localStorage.getItem(LS_KEY);
-      const storedToken = localStorage.getItem(LS_TOKEN_KEY);
-      if (stored && UUID_RE.test(stored) && storedToken && UUID_RE.test(storedToken)) {
-        state.workspaceId = stored;
-        state.ownerToken = storedToken;
-        const { data } = await supabase.rpc("get_workspace", { p_id: stored, p_token: storedToken });
+      const stored = getStoredWorkspace();
+      if (stored) {
+        state.workspaceId = stored.id;
+        state.ownerToken = stored.token;
+        const { data } = await supabase.rpc("get_workspace", { p_id: stored.id, p_token: stored.token });
         applyCloudData(data);
       } else {
         state.workspaceId = null;
