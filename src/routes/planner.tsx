@@ -424,9 +424,11 @@ function MiniJob({ doc }: { doc: Doc }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: doc.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const c = CATEGORIES[jobCategory(doc)];
+  const open = usePlannerActions();
+  const lp = useLongPress(() => open(doc));
   return (
     <Link to="/doc/$id" params={{ id: doc.id }}>
-      <div ref={setNodeRef} style={style} {...listeners} {...attributes}
+      <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
         className={cn("rounded px-1 py-0.5 truncate border-l-2 cursor-grab text-[10px]", c.card, c.border, isDragging && "opacity-50")}
         title={`${doc.customer.name || "—"} · ${doc.number}`}>
         {doc.customer.name || doc.number}
@@ -440,8 +442,10 @@ function JobCard({ doc, currency, vat }: { doc: Doc; currency: string; vat: numb
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const t = docTotals(doc, vat);
   const c = CATEGORIES[jobCategory(doc)];
+  const open = usePlannerActions();
+  const lp = useLongPress(() => open(doc));
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
       className={cn("rounded p-2 text-xs cursor-grab border-l-4", c.card, c.border, isDragging && "opacity-50")}>
       <div className="font-semibold truncate">{doc.customer.name || "—"}</div>
       <div className="opacity-80 truncate">{doc.number}</div>
