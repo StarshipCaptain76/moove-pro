@@ -46,25 +46,16 @@ function DocPage() {
   const distanceFn = useServerFn(routeDistance);
   const [calcing, setCalcing] = useState(false);
 
-  // Build a full picker list by unioning the customers store with unique
-  // customers embedded on past docs (historical imports never populated the
-  // customers array, so they only exist inside their doc records).
-  const allCustomers = useMemo(() => {
-    const seen = new Map<string, typeof customers[number]>();
-    const keyOf = (c: { name?: string; phone?: string; email?: string }) =>
-      `${(c.name ?? "").trim().toLowerCase()}|${(c.phone ?? "").trim()}|${(c.email ?? "").trim().toLowerCase()}`;
-    customers.forEach((c) => {
-      if (!c.name) return;
-      seen.set(keyOf(c), c);
-    });
-    docs.forEach((d) => {
-      const c = d.customer;
-      if (!c?.name) return;
-      const k = keyOf(c);
-      if (!seen.has(k)) seen.set(k, c);
-    });
-    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [customers, docs]);
+  // Only surface customers explicitly added in the app — never the ones
+  // embedded on historical/imported docs.
+  const allCustomers = useMemo(
+    () =>
+      customers
+        .filter((c) => c.name?.trim())
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [customers],
+  );
 
   if (!doc) {
     return (
