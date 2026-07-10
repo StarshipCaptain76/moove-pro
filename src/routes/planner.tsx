@@ -469,8 +469,9 @@ function MiniJob({ doc }: { doc: Doc }) {
     <Link to="/doc/$id" params={{ id: doc.id }}>
       <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
         className={cn("rounded px-1 py-0.5 truncate border-l-2 cursor-grab text-[10px]", c.card, c.border, isDragging && "opacity-50")}
-        title={`${doc.customer.name || "—"} · ${doc.number}`}>
+        title={`${doc.customer.name || "—"} · ${doc.number} · ${jobSummary(doc)}`}>
         {doc.customer.name || doc.number}
+
       </div>
     </Link>
   );
