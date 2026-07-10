@@ -185,6 +185,12 @@ function mergeCloudDocs(cloudDocs: Doc[], localDocs: Doc[]): { docs: Doc[]; pres
   return { docs: Array.from(byId.values()), preserved };
 }
 
+function docsFromCloudData(data: unknown): Doc[] {
+  if (!data || typeof data !== "object") return [];
+  const docs = (data as Partial<ReturnType<typeof snapshot>>).docs;
+  return Array.isArray(docs) ? docs : [];
+}
+
 function applyCloudData(data: unknown) {
   if (!data || typeof data !== "object") return;
   const cloud = data as Partial<ReturnType<typeof snapshot>>;
@@ -221,6 +227,10 @@ async function claimStoredWorkspaceForUser() {
 }
 
 async function loadAuthedWorkspace() {
+  const stored = getStoredWorkspace();
+  const storedData = stored
+    ? await supabase.rpc("get_workspace", { p_id: stored.id, p_token: stored.token }).then((r) => r.data).catch(() => null)
+    : null;
   await claimStoredWorkspaceForUser();
   const { data, error } = await supabase.rpc("get_my_workspace");
   if (error) throw error;
@@ -246,7 +256,18 @@ async function loadAuthedWorkspace() {
     await supabase.rpc("save_my_workspace", { p_data: local as unknown as Json });
     clearDirty();
   } else {
-    applyCloudData(cloud);
+    const storedDocs = docsFromCloudData(storedData);
+    if (storedDocs.length && stored?.id !== row.id) {
+      const cloudObject = cloud && typeof cloud === "object" ? cloud as Partial<ReturnType<typeof snapshot>> : {};
+      const merged = mergeCloudDocs(cloudObject.docs ?? [], storedDocs);
+      applyCloudData({ ...cloudObject, docs: merged.docs });
+      if (merged.preserved) {
+        await supabase.rpc("save_my_workspace", { p_data: snapshot() as unknown as Json });
+        clearDirty();
+      }
+    } else {
+      applyCloudData(cloud);
+    }
   }
 }
 
