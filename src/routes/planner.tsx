@@ -209,7 +209,105 @@ function PlannerPage() {
           </div>
         )}
       </DndContext>
+
+      <JobActionSheet
+        doc={actionDoc}
+        onClose={closeActions}
+        moveMode={moveMode}
+        onEnterMove={() => setMoveMode(true)}
+        onMove={moveTo}
+        onMarkPaid={markPaid}
+        onCancel={cancelJob}
+      />
+     </JobActionsCtx.Provider>
     </Shell>
+  );
+}
+
+function useLongPress(onLongPress: () => void, ms = 500) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    start.current = { x: e.clientX, y: e.clientY };
+    clear();
+    timer.current = setTimeout(() => { onLongPress(); timer.current = null; }, ms);
+  }, [onLongPress, ms]);
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!start.current || !timer.current) return;
+    const dx = e.clientX - start.current.x;
+    const dy = e.clientY - start.current.y;
+    if (dx * dx + dy * dy > 64) clear();
+  }, []);
+  const onContextMenu = useCallback((e: React.MouseEvent) => { e.preventDefault(); onLongPress(); }, [onLongPress]);
+  return {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp: clear,
+    onPointerLeave: clear,
+    onPointerCancel: clear,
+    onContextMenu,
+  };
+}
+
+function JobActionSheet({
+  doc, onClose, moveMode, onEnterMove, onMove, onMarkPaid, onCancel,
+}: {
+  doc: Doc | null;
+  onClose: () => void;
+  moveMode: boolean;
+  onEnterMove: () => void;
+  onMove: (iso: string | undefined) => void;
+  onMarkPaid: (m: PayMethod) => void;
+  onCancel: () => void;
+}) {
+  const nav = useNavigate();
+  return (
+    <Sheet open={!!doc} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="bottom" className="rounded-t-2xl">
+        <SheetHeader>
+          <SheetTitle className="text-left">
+            {doc?.customer.name || "—"}
+            <div className="text-xs font-normal text-muted-foreground mt-0.5">
+              {doc?.number} · {doc?.scheduledDate ?? "unscheduled"}
+            </div>
+          </SheetTitle>
+        </SheetHeader>
+        {!moveMode ? (
+          <div className="mt-4 space-y-2">
+            {doc?.status !== "paid" && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1.5">Record payment</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["cash","eft","card"] as PayMethod[]).map((m) => (
+                    <Button key={m} className="h-11 uppercase" onClick={() => onMarkPaid(m)}>
+                      <Check className="h-4 w-4 mr-1.5" /> {m}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <Button variant="secondary" className="w-full h-11" onClick={onEnterMove}>
+              <CalendarDays className="h-4 w-4 mr-2" /> Move to another day
+            </Button>
+            <Button variant="outline" className="w-full h-11" onClick={() => { if (doc) nav({ to: "/doc/$id", params: { id: doc.id } }); onClose(); }}>
+              <ExternalLink className="h-4 w-4 mr-2" /> Open job
+            </Button>
+            <Button variant="destructive" className="w-full h-11" onClick={onCancel}>
+              <X className="h-4 w-4 mr-2" /> Cancel job
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <div className="text-xs text-muted-foreground">Pick a new date</div>
+            <DatePicker value={doc?.scheduledDate} onChange={(iso) => onMove(iso)} clearable />
+            <Button variant="ghost" className="w-full" onClick={() => onMove(undefined)}>
+              Move to unscheduled
+            </Button>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
 
