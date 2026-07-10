@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useStore, newId, type Unit, type Density } from "@/lib/store";
-import { Trash2, Plus, Search, ChevronDown, ChevronUp, Check, X, Link2, Copy } from "lucide-react";
+import { Trash2, Plus, Search, ChevronDown, ChevronUp, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/store";
@@ -14,7 +14,6 @@ import historical from "@/data/historical.json";
 import bankImport from "@/data/bank-import-2026.json";
 import { InlineTumbler } from "@/components/app/InlineTumbler";
 import { Slider } from "@/components/ui/slider";
-import { getShareLink, subscribeSync } from "@/lib/sync";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
@@ -44,7 +43,6 @@ function SettingsPage() {
             ))}
             <Button onClick={() => toast.success("Saved")} className="w-fit">Save</Button>
           </Card>
-            <SyncLinkCard />
           </div>
         </TabsContent>
 
@@ -98,41 +96,6 @@ function SettingsPage() {
 
 function DataEditor() {
   return <DataEditorInner />;
-}
-
-function SyncLinkCard() {
-  const [link, setLink] = useState<string | null>(null);
-  useEffect(() => {
-    const unsub = subscribeSync(() => setLink(getShareLink()));
-    return () => { unsub(); };
-  }, []);
-  const copy = async () => {
-    if (!link) return;
-    try {
-      await navigator.clipboard.writeText(link);
-      toast.success("Sync link copied");
-    } catch {
-      toast.error("Could not copy — select the field and copy manually.");
-    }
-  };
-  return (
-    <Card className="p-4 sm:p-6 grid gap-3">
-      <div className="flex items-center gap-2">
-        <Link2 className="h-4 w-4" />
-        <h3 className="font-medium">Sync link</h3>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Open this link once in your other site (preview or published) to load this workspace there.
-        Anyone with the link can edit — treat it like a password.
-      </p>
-      <div className="flex gap-2">
-        <Input readOnly className="h-11 font-mono text-xs" value={link ?? "Preparing sync link…"} onFocus={(e) => e.currentTarget.select()} />
-        <Button onClick={copy} disabled={!link} className="h-11 shrink-0">
-          <Copy className="h-4 w-4 mr-1" /> Copy
-        </Button>
-      </div>
-    </Card>
-  );
 }
 
 function DataEditorInner() {
