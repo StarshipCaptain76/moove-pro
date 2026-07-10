@@ -407,8 +407,8 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
   );
 }
 
-
 function DayCol({ date, iso, docs, currency, vat }: { date: Date; iso: string; docs: Doc[]; currency: string; vat: number }) {
+
   const { setNodeRef, isOver } = useDroppable({ id: iso });
   const today = isToday(date);
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
