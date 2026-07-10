@@ -383,7 +383,7 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: doc.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const t = docTotals(doc, vat);
-  const c = CATEGORIES[jobCategory(doc)];
+  const c = MATERIALS[jobMaterialCategory(doc)];
   const open = usePlannerActions();
   const lp = useLongPress(() => open(doc));
   return (
