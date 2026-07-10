@@ -1,5 +1,18 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+  pushDoc,
+  deleteDocRow,
+  pushCatalogItem,
+  deleteCatalogItemRow,
+  pushCustomer,
+  pushCompanyProfile,
+  pushExpense,
+  deleteExpenseRow,
+  pushExpenseCategory,
+  deleteExpenseCategoryRow,
+  renameExpenseCategoryRow,
+} from "./sync";
 
 export type Unit = "each" | "hour" | "km" | "job";
 export type PayMethod = "cash" | "eft" | "card";
@@ -195,7 +208,8 @@ export const useStore = create<State>()(
       expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
       density: "normal" as Density,
       upsertDoc: (d) =>
-        set((s) => ({
+        {
+          set((s) => ({
           docs: s.docs.some((x) => x.id === d.id)
             ? s.docs.map((x) => (x.id === d.id ? d : x))
             : [d, ...s.docs],
@@ -204,49 +218,81 @@ export const useStore = create<State>()(
               ? s.customers.map((c) => (c.id === d.customer.id ? d.customer : c))
               : [...s.customers, d.customer]
             : s.customers,
-        })),
-      deleteDoc: (id) => set((s) => ({ docs: s.docs.filter((d) => d.id !== id) })),
-      upsertCatalog: (c) =>
+          }));
+          pushDoc(d);
+          if (d.customer.name) pushCustomer(d.customer);
+        },
+      deleteDoc: (id) => {
+        set((s) => ({ docs: s.docs.filter((d) => d.id !== id) }));
+        deleteDocRow(id);
+      },
+      upsertCatalog: (c) => {
         set((s) => ({
           catalog: s.catalog.some((x) => x.id === c.id)
             ? s.catalog.map((x) => (x.id === c.id ? c : x))
             : [...s.catalog, c],
-        })),
-      deleteCatalog: (id) => set((s) => ({ catalog: s.catalog.filter((c) => c.id !== id) })),
-      upsertCustomer: (c) =>
+        }));
+        pushCatalogItem(c);
+      },
+      deleteCatalog: (id) => {
+        set((s) => ({ catalog: s.catalog.filter((c) => c.id !== id) }));
+        deleteCatalogItemRow(id);
+      },
+      upsertCustomer: (c) => {
         set((s) => ({
           customers: s.customers.some((x) => x.id === c.id)
             ? s.customers.map((x) => (x.id === c.id ? c : x))
             : [...s.customers, c],
-        })),
-      setCompany: (c) => set({ company: c }),
-      setBanking: (b) => set({ banking: b }),
-      setBilling: (b) => set({ billing: b }),
+        }));
+        pushCustomer(c);
+      },
+      setCompany: (c) => {
+        set({ company: c });
+        pushCompanyProfile();
+      },
+      setBanking: (b) => {
+        set({ banking: b });
+        pushCompanyProfile();
+      },
+      setBilling: (b) => {
+        set({ billing: b });
+        pushCompanyProfile();
+      },
       nextDocNumber: (t) => {
         const { billing: b } = get();
         if (t === "quote") {
           const n = b.nextQuoteNo;
           set({ billing: { ...b, nextQuoteNo: n + 1 } });
+          pushCompanyProfile();
           return `${b.quotePrefix}-${n}`;
         }
         const n = b.nextInvoiceNo;
         set({ billing: { ...b, nextInvoiceNo: n + 1 } });
+        pushCompanyProfile();
         return `${b.invoicePrefix}-${n}`;
       },
-      upsertExpense: (e) =>
+      upsertExpense: (e) => {
         set((s) => ({
           expenses: s.expenses.some((x) => x.id === e.id)
             ? s.expenses.map((x) => (x.id === e.id ? e : x))
             : [e, ...s.expenses],
-        })),
-      deleteExpense: (id) => set((s) => ({ expenses: s.expenses.filter((e) => e.id !== id) })),
-      addExpenseCategory: (name) =>
+        }));
+        pushExpense(e);
+      },
+      deleteExpense: (id) => {
+        set((s) => ({ expenses: s.expenses.filter((e) => e.id !== id) }));
+        deleteExpenseRow(id);
+      },
+      addExpenseCategory: (name) => {
         set((s) => {
           const n = name.trim();
           if (!n || s.expenseCategories.some((c) => c.toLowerCase() === n.toLowerCase())) return {} as Partial<State>;
           return { expenseCategories: [...s.expenseCategories, n] };
-        }),
-      renameExpenseCategory: (oldName, newName) =>
+        });
+        const n = name.trim();
+        if (n) pushExpenseCategory(n);
+      },
+      renameExpenseCategory: (oldName, newName) => {
         set((s) => {
           const n = newName.trim();
           if (!n) return {} as Partial<State>;
@@ -254,13 +300,30 @@ export const useStore = create<State>()(
             expenseCategories: s.expenseCategories.map((c) => (c === oldName ? n : c)),
             expenses: s.expenses.map((e) => (e.category === oldName ? { ...e, category: n } : e)),
           };
-        }),
-      deleteExpenseCategory: (name) =>
+        });
+        const n = newName.trim();
+        if (n) {
+          void renameExpenseCategoryRow(oldName, n);
+          // Push any expenses that changed category.
+          get().expenses.forEach((e) => {
+            if (e.category === n) pushExpense(e);
+          });
+        }
+      },
+      deleteExpenseCategory: (name) => {
         set((s) => ({
           expenseCategories: s.expenseCategories.filter((c) => c !== name),
           expenses: s.expenses.map((e) => (e.category === name ? { ...e, category: "Other" } : e)),
-        })),
-      setDensity: (d) => set({ density: d }),
+        }));
+        deleteExpenseCategoryRow(name);
+        get().expenses.forEach((e) => {
+          if (e.category === "Other") pushExpense(e);
+        });
+      },
+      setDensity: (d) => {
+        set({ density: d });
+        pushCompanyProfile();
+      },
       importHistorical: (p) => {
         const s = get();
         const existingExp = new Set(s.expenses.map((e) => e.id));
@@ -283,6 +346,11 @@ export const useStore = create<State>()(
             nextInvoiceNo: Math.max(s.billing.nextInvoiceNo, p.maxInvoiceNo + 1),
           },
         });
+        newExp.forEach(pushExpense);
+        newDocs.forEach(pushDoc);
+        p.newExpenseCategories.forEach(pushExpenseCategory);
+        addedCatalog.forEach(pushCatalogItem);
+        pushCompanyProfile();
         return { expenses: newExp.length, docs: newDocs.length };
       },
       clearHistorical: () => {
@@ -290,10 +358,16 @@ export const useStore = create<State>()(
         const expBefore = s.expenses.length;
         const docBefore = s.docs.length;
         const isImported = (id: string) => id.startsWith("hist-") || id.startsWith("bank-");
+        const removedExp = s.expenses.filter((e) => isImported(e.id));
+        const removedDocs = s.docs.filter((d) => isImported(d.id));
+        const removedCat = s.catalog.filter((c) => c.id.startsWith("hist-cat-"));
         const expenses = s.expenses.filter((e) => !isImported(e.id));
         const docs = s.docs.filter((d) => !isImported(d.id));
         const catalog = s.catalog.filter((c) => !c.id.startsWith("hist-cat-"));
         set({ expenses, docs, catalog });
+        removedExp.forEach((e) => deleteExpenseRow(e.id));
+        removedDocs.forEach((d) => deleteDocRow(d.id));
+        removedCat.forEach((c) => deleteCatalogItemRow(c.id));
         return { expenses: expBefore - expenses.length, docs: docBefore - docs.length };
       },
     }),

@@ -4,9 +4,9 @@ import logoAsset from "@/assets/moove-logo.png.asset.json";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Calendar, BarChart3, Settings,
-  Cloud, CloudOff, Link2, Check, Plus, FileText, Receipt, Wallet, LogIn, LogOut, User,
+  Cloud, CloudOff, Plus, FileText, Receipt, Wallet, LogIn, LogOut, User,
 } from "lucide-react";
-import { initSync, subscribeSync, getShareLink } from "@/lib/sync";
+import { initSync, subscribeSync } from "@/lib/sync";
 import { useStore, newId, type Doc } from "@/lib/store";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -161,47 +161,45 @@ function MobileTabBar() {
 }
 
 function SyncBadge() {
-  const [s, setS] = useState<{ status: string; workspaceId: string | null; authed: boolean; error?: string }>({
-    status: "idle", workspaceId: null, authed: false,
+  const [s, setS] = useState<{ status: string; authed: boolean; error?: string }>({
+    status: "idle",
+    authed: false,
   });
-  const [copied, setCopied] = useState(false);
   useEffect(() => {
     initSync();
     const unsub = subscribeSync(setS);
-    return () => { unsub(); };
+    return () => {
+      unsub();
+    };
   }, []);
   const Icon = s.status === "error" ? CloudOff : Cloud;
   const statusClass =
     s.status === "synced"
-      ? "bg-green-500/20 text-green-500 hover:bg-green-500/30"
+      ? "bg-green-500/20 text-green-500"
       : s.status === "error"
-        ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
+        ? "bg-destructive/20 text-destructive"
         : s.status === "loading" || s.status === "syncing"
-          ? "bg-amber-500/20 text-amber-500 hover:bg-amber-500/30"
-          : "bg-white/10 hover:bg-white/20";
-  const copy = async () => {
-    const link = getShareLink();
-    if (!link) {
-      if (s.authed) toast.info("You're signed in — data syncs automatically across devices.");
-      return;
-    }
-    await navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
+          ? "bg-amber-500/20 text-amber-500"
+          : "bg-white/10";
+  const label = s.error
+    ? s.error
+    : s.status === "loading"
+      ? "Loading…"
+      : s.status === "syncing"
+        ? "Saving…"
+        : s.authed
+          ? "Synced"
+          : "Sign in to sync";
   return (
-    <button
-      onClick={copy}
-      title={s.error || (s.authed ? "Signed in — auto-syncing" : s.workspaceId ? "Copy sync link" : "Connecting…")}
+    <span
+      title={label}
       className={cn(
-        "px-2 py-1.5 rounded flex items-center gap-1.5 text-xs font-medium transition-colors",
+        "px-2 py-1.5 rounded flex items-center gap-1.5 text-xs font-medium",
         statusClass,
       )}
     >
       <Icon className="h-3.5 w-3.5" />
-      {s.workspaceId && !s.authed && (copied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />)}
-      {s.authed && <User className="h-3.5 w-3.5" />}
-    </button>
+    </span>
   );
 }
 

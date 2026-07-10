@@ -14,6 +14,252 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalog_items: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_user_id: string
+          price: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name: string
+          owner_user_id: string
+          price?: number
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_user_id?: string
+          price?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      company_profile: {
+        Row: {
+          banking: Json
+          billing: Json
+          company: Json
+          created_at: string
+          density: string
+          migrated_at: string | null
+          owner_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          banking?: Json
+          billing?: Json
+          company?: Json
+          created_at?: string
+          density?: string
+          migrated_at?: string | null
+          owner_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          banking?: Json
+          billing?: Json
+          company?: Json
+          created_at?: string
+          density?: string
+          migrated_at?: string | null
+          owner_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      customers: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          owner_user_id: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string
+          id: string
+          name: string
+          owner_user_id: string
+          phone?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          owner_user_id?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      docs: {
+        Row: {
+          archived: boolean
+          created_at: string
+          customer: Json
+          day_order: number | null
+          deposit_paid: boolean
+          deposit_pct: number
+          distance_km: number | null
+          from_address: string | null
+          from_coords: Json | null
+          id: string
+          items: Json
+          notes: string | null
+          number: string
+          owner_user_id: string
+          paid_at: string | null
+          payment_method: string | null
+          scheduled_date: string | null
+          status: string
+          to_address: string | null
+          to_coords: Json | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          customer?: Json
+          day_order?: number | null
+          deposit_paid?: boolean
+          deposit_pct?: number
+          distance_km?: number | null
+          from_address?: string | null
+          from_coords?: Json | null
+          id: string
+          items?: Json
+          notes?: string | null
+          number: string
+          owner_user_id: string
+          paid_at?: string | null
+          payment_method?: string | null
+          scheduled_date?: string | null
+          status?: string
+          to_address?: string | null
+          to_coords?: Json | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          customer?: Json
+          day_order?: number | null
+          deposit_paid?: boolean
+          deposit_pct?: number
+          distance_km?: number | null
+          from_address?: string | null
+          from_coords?: Json | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          number?: string
+          owner_user_id?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          scheduled_date?: string | null
+          status?: string
+          to_address?: string | null
+          to_coords?: Json | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      expense_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          linked_doc_id: string | null
+          notes: string | null
+          owner_user_id: string
+          payment_method: string | null
+          receipt_image: string | null
+          updated_at: string
+          vat_amount: number | null
+          vendor: string
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          created_at?: string
+          date: string
+          description?: string | null
+          id: string
+          linked_doc_id?: string | null
+          notes?: string | null
+          owner_user_id: string
+          payment_method?: string | null
+          receipt_image?: string | null
+          updated_at?: string
+          vat_amount?: number | null
+          vendor?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          linked_doc_id?: string | null
+          notes?: string | null
+          owner_user_id?: string
+          payment_method?: string | null
+          receipt_image?: string | null
+          updated_at?: string
+          vat_amount?: number | null
+          vendor?: string
+        }
+        Relationships: []
+      }
       workspaces: {
         Row: {
           data: Json
@@ -62,6 +308,8 @@ export type Database = {
         }[]
       }
       get_workspace: { Args: { p_id: string; p_token: string }; Returns: Json }
+      migrate_workspace_blob: { Args: never; Returns: boolean }
+      next_doc_number: { Args: { p_type: string }; Returns: string }
       save_my_workspace: { Args: { p_data: Json }; Returns: boolean }
       update_workspace: {
         Args: { p_data: Json; p_id: string; p_token: string }
