@@ -117,11 +117,13 @@ function DocPage() {
   const convert = () => {
     const invNum = nextDocNumber("invoice");
     upsertDoc({ ...doc, type: "invoice", number: invNum, status: "accepted", archived: false, scheduledDate: doc.scheduledDate ?? new Date().toISOString().slice(0, 10) });
+    void flushSync();
     toast.success(`Converted to invoice ${invNum}`);
   };
 
   const markPaid = (m: PayMethod) => {
     update({ status: "paid", archived: false, paymentMethod: m, paidAt: new Date().toISOString(), scheduledDate: doc.scheduledDate ?? new Date().toISOString().slice(0, 10) });
+    void flushSync();
     toast.success(`Marked paid (${m.toUpperCase()})`);
   };
 
