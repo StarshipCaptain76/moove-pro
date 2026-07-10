@@ -65,9 +65,8 @@ function PaymentIndicator({ doc }: { doc: Doc }) {
   return <span className="text-[10px] uppercase font-bold px-1 py-0.5 rounded bg-red-500 text-white leading-none">unpaid</span>;
 }
 
-
-
 type View = "agenda" | "week" | "month";
+
 
 function PlannerPage() {
   const { docs, upsertDoc, billing } = useStore();
