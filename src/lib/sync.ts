@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 const LS_KEY = "moove-workspace-id";
 const LS_TOKEN_KEY = "moove-workspace-token";
+const LS_DIRTY_KEY = "moove-workspace-dirty";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Status = "idle" | "loading" | "syncing" | "synced" | "error";
@@ -118,6 +119,17 @@ function snapshot() {
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let suppressPush = false;
 
+function markDirty() {
+  if (typeof window !== "undefined") localStorage.setItem(LS_DIRTY_KEY, "1");
+}
+function clearDirty() {
+  if (typeof window !== "undefined") localStorage.removeItem(LS_DIRTY_KEY);
+}
+function isDirty(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(LS_DIRTY_KEY) === "1";
+}
+
 async function push() {
   state.status = "syncing";
   emit();
@@ -141,12 +153,14 @@ async function push() {
   } else {
     state.status = "synced";
     state.error = undefined;
+    clearDirty();
   }
   emit();
 }
 
 function schedulePush() {
   if (suppressPush) return;
+  markDirty();
   if (pushTimer) clearTimeout(pushTimer);
   pushTimer = setTimeout(push, 600);
 }
@@ -198,8 +212,13 @@ async function loadAuthedWorkspace() {
     local.customers?.length ||
     local.expenses?.length ||
     local.company?.name;
-  if (cloudEmpty && localHasContent) {
+  // Local has unpushed changes — keep local, push it instead of pulling cloud.
+  if (isDirty() && localHasContent) {
     await supabase.rpc("save_my_workspace", { p_data: local as unknown as Json });
+    clearDirty();
+  } else if (cloudEmpty && localHasContent) {
+    await supabase.rpc("save_my_workspace", { p_data: local as unknown as Json });
+    clearDirty();
   } else {
     applyCloudData(cloud);
   }
@@ -231,9 +250,27 @@ export async function initSync() {
       const { id, token } = await resolveWorkspace();
       state.workspaceId = id;
       state.ownerToken = token;
-      const { data, error } = await supabase.rpc("get_workspace", { p_id: id, p_token: token });
-      if (error) throw error;
-      applyCloudData(data);
+      const local = snapshot();
+      const localHasContent =
+        local.docs?.length ||
+        local.catalog?.length ||
+        local.customers?.length ||
+        local.expenses?.length ||
+        local.company?.name;
+      if (isDirty() && localHasContent) {
+        // Unpushed local changes: push local instead of pulling stale cloud.
+        const res = await supabase.rpc("update_workspace", {
+          p_id: id,
+          p_token: token,
+          p_data: local as unknown as Json,
+        });
+        if (res.error) throw res.error;
+        clearDirty();
+      } else {
+        const { data, error } = await supabase.rpc("get_workspace", { p_id: id, p_token: token });
+        if (error) throw error;
+        applyCloudData(data);
+      }
     }
     state.status = "synced";
     emit();
