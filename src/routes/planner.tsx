@@ -83,6 +83,7 @@ function PlannerPage() {
   const [view, setView] = useState<View>("agenda");
   const [weekStart, setWeekStart] = useState(() => new Date());
   const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()));
+  const [agendaStart, setAgendaStart] = useState(() => new Date());
   const [showUnsched, setShowUnsched] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const [actionDoc, setActionDoc] = useState<Doc | null>(null);
@@ -109,9 +110,9 @@ function PlannerPage() {
   // Agenda: next 30 days that have jobs, plus today
   const agendaDays = useMemo(() => {
     const days: Date[] = [];
-    for (let i = 0; i < 60; i++) days.push(addDays(new Date(), i));
+    for (let i = 0; i < 60; i++) days.push(addDays(agendaStart, i));
     return days.filter((d, i) => i === 0 || byDay(format(d, "yyyy-MM-dd")).length > 0);
-  }, [jobs]);
+  }, [jobs, agendaStart]);
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -141,6 +142,19 @@ function PlannerPage() {
     closeActions();
   };
 
+  const swipe = useSwipe({
+    onLeft: () => {
+      if (view === "agenda") setAgendaStart(addDays(agendaStart, 1));
+      else if (view === "week") setWeekStart(addDays(weekStart, 7));
+      else setMonthAnchor(addMonths(monthAnchor, 1));
+    },
+    onRight: () => {
+      if (view === "agenda") setAgendaStart(addDays(agendaStart, -1));
+      else if (view === "week") setWeekStart(addDays(weekStart, -7));
+      else setMonthAnchor(addMonths(monthAnchor, -1));
+    },
+  });
+
   return (
     <Shell>
      <JobActionsCtx.Provider value={openActions}>
@@ -161,7 +175,7 @@ function PlannerPage() {
       </div>
 
       {/* Navigation */}
-      {view !== "agenda" && (
+      {view !== "agenda" ? (
         <div className="flex items-center gap-2 mb-3">
           <Button size="icon" variant="outline" className="h-10 w-10" onClick={() =>
             view === "week" ? setWeekStart(addDays(weekStart, -7)) : setMonthAnchor(addMonths(monthAnchor, -1))
@@ -180,6 +194,15 @@ function PlannerPage() {
               : setMonthAnchor(startOfMonth(new Date()))
           }>Today</Button>
         </div>
+      ) : (
+        format(agendaStart, "yyyy-MM-dd") !== format(new Date(), "yyyy-MM-dd") && (
+          <div className="flex items-center gap-2 mb-3">
+            <Button size="icon" variant="outline" className="h-10 w-10" onClick={() => setAgendaStart(addDays(agendaStart, -1))}><ChevronLeft className="h-4 w-4" /></Button>
+            <div className="font-medium text-sm flex-1 text-center">from {format(agendaStart, "d MMM")}</div>
+            <Button size="icon" variant="outline" className="h-10 w-10" onClick={() => setAgendaStart(addDays(agendaStart, 1))}><ChevronRight className="h-4 w-4" /></Button>
+            <Button size="sm" variant="secondary" className="h-10" onClick={() => setAgendaStart(new Date())}>Today</Button>
+          </div>
+        )
       )}
 
       {/* Unscheduled pill */}
@@ -205,6 +228,7 @@ function PlannerPage() {
 
         <Legend />
 
+        <div {...swipe} style={{ touchAction: "pan-y" }}>
         {view === "agenda" && (
           <div className="space-y-4">
             {agendaDays.map((d) => {
@@ -239,6 +263,7 @@ function PlannerPage() {
             </div>
           </div>
         )}
+        </div>
       </DndContext>
 
       <JobActionSheet
@@ -279,6 +304,25 @@ function useLongPress(onLongPress: () => void, ms = 500) {
     onPointerCancel: clear,
     onContextMenu,
   };
+}
+
+function useSwipe({ onLeft, onRight, threshold = 50 }: { onLeft: () => void; onRight: () => void; threshold?: number }) {
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    start.current = { x: t.clientX, y: t.clientY };
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!start.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.current.x;
+    const dy = t.clientY - start.current.y;
+    start.current = null;
+    if (Math.abs(dx) < threshold) return;
+    if (Math.abs(dy) > Math.abs(dx)) return;
+    if (dx < 0) onLeft(); else onRight();
+  };
+  return { onTouchStart, onTouchEnd };
 }
 
 function JobActionSheet({
