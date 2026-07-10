@@ -400,7 +400,9 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
           <div className="text-[11px] font-medium truncate">{jobSummary(doc)}</div>
         </div>
         <div className="text-sm font-mono font-semibold shrink-0">{fmtMoney(t.total, currency)}</div>
+        <PaymentIndicator doc={doc} />
       </Link>
+
 
     </div>
   );
