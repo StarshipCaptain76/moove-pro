@@ -10,17 +10,26 @@ export const Route = createFileRoute("/docs")({
   component: DocsListPage,
   validateSearch: (search: Record<string, unknown>) => ({
     type: search.type === "quote" || search.type === "invoice" ? search.type : undefined,
+    status: search.status === "unpaid" ? search.status : undefined,
   }),
 });
 
 function DocsListPage() {
   const { docs, billing } = useStore();
-  const { type } = useSearch({ from: "/docs" });
+  const { type, status } = useSearch({ from: "/docs" });
 
-  const title = type === "quote" ? "Quotes" : type === "invoice" ? "Invoices" : "Quotes & Invoices";
+  let title: string;
+  if (status === "unpaid") title = "Outstanding invoices";
+  else if (type === "quote") title = "Quotes";
+  else if (type === "invoice") title = "Invoices";
+  else title = "Quotes & Invoices";
 
   const filtered = docs
-    .filter((d) => (type ? d.type === type : (d.type === "quote" || d.type === "invoice")))
+    .filter((d) => {
+      if (type && d.type !== type) return false;
+      if (status === "unpaid") return d.type === "invoice" && d.status !== "paid";
+      return d.type === "quote" || d.type === "invoice";
+    })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
@@ -33,7 +42,7 @@ function DocsListPage() {
       <Card className="p-3 sm:p-4">
         {filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">
-            No {type ?? "quotes or invoices"} found.
+            No {status === "unpaid" ? "outstanding invoices" : type ?? "quotes or invoices"} found.
           </p>
         ) : (
           <ul className="divide-y">
