@@ -27,6 +27,7 @@ import { DatePicker } from "@/components/app/DatePicker";
 import { Slider } from "@/components/ui/slider";
 import { useServerFn } from "@tanstack/react-start";
 import { routeDistance } from "@/lib/maps.functions";
+import { flushSync } from "@/lib/sync";
 const nn = (v: number) => (isFinite(v) && v > 0 ? v : 0);
 
 
