@@ -66,6 +66,14 @@ function PaymentIndicator({ doc }: { doc: Doc }) {
   return <span className="text-[10px] uppercase font-bold px-1 py-0.5 rounded bg-red-500 text-white leading-none">unpaid</span>;
 }
 
+const todayIso = () => format(new Date(), "yyyy-MM-dd");
+const paidDate = (doc: Doc) => {
+  if (doc.status !== "paid" || !doc.paidAt) return undefined;
+  const iso = format(new Date(doc.paidAt), "yyyy-MM-dd");
+  return !doc.archived || iso === todayIso() ? iso : undefined;
+};
+const plannerDate = (doc: Doc) => doc.scheduledDate || paidDate(doc);
+
 type View = "agenda" | "week" | "month";
 
 
@@ -82,7 +90,7 @@ function PlannerPage() {
 
   const jobs = useMemo(() => docs.filter((d) => d.status === "accepted" || d.status === "paid"), [docs]);
   const byDay = (iso: string) =>
-    jobs.filter((d) => d.scheduledDate === iso).sort((a, b) => (a.dayOrder ?? 0) - (b.dayOrder ?? 0));
+    jobs.filter((d) => plannerDate(d) === iso).sort((a, b) => (a.dayOrder ?? 0) - (b.dayOrder ?? 0));
   // Paid docs without a scheduled date are historical / closed jobs — don't
   // surface them as "unscheduled". Only accepted jobs still need scheduling.
   const unscheduled = jobs.filter((d) => !d.scheduledDate && d.status === "accepted");
@@ -114,7 +122,7 @@ function PlannerPage() {
   const closeActions = () => { setActionDoc(null); setMoveMode(false); };
   const markPaid = (m: PayMethod) => {
     if (!actionDoc) return;
-    upsertDoc({ ...actionDoc, status: "paid", paymentMethod: m, paidAt: new Date().toISOString() });
+    upsertDoc({ ...actionDoc, status: "paid", archived: false, paymentMethod: m, paidAt: new Date().toISOString(), scheduledDate: actionDoc.scheduledDate ?? todayIso() });
     toast.success(`Marked paid (${m.toUpperCase()})`);
     closeActions();
   };

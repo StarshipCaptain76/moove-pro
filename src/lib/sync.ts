@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { useStore } from "./store";
+import { useStore, type Doc } from "./store";
 import type { Json } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 
@@ -165,9 +165,36 @@ function schedulePush() {
   pushTimer = setTimeout(push, 600);
 }
 
+function shouldPreserveLocalDoc(doc: Doc): boolean {
+  if (!doc.archived) return true;
+  const today = new Date().toISOString().slice(0, 10);
+  return doc.scheduledDate === today || (doc.status === "paid" && !!doc.paidAt?.startsWith(today));
+}
+
+function mergeCloudDocs(cloudDocs: Doc[], localDocs: Doc[]): { docs: Doc[]; preserved: boolean } {
+  const byId = new Map(cloudDocs.map((doc) => [doc.id, doc]));
+  let preserved = false;
+  localDocs.forEach((localDoc) => {
+    if (!shouldPreserveLocalDoc(localDoc)) return;
+    const cloudDoc = byId.get(localDoc.id);
+    if (!cloudDoc || (cloudDoc.archived && !localDoc.archived)) {
+      byId.set(localDoc.id, localDoc);
+      preserved = true;
+    }
+  });
+  return { docs: Array.from(byId.values()), preserved };
+}
+
+function docsFromCloudData(data: unknown): Doc[] {
+  if (!data || typeof data !== "object") return [];
+  const docs = (data as Partial<ReturnType<typeof snapshot>>).docs;
+  return Array.isArray(docs) ? docs : [];
+}
+
 function applyCloudData(data: unknown) {
   if (!data || typeof data !== "object") return;
   const cloud = data as Partial<ReturnType<typeof snapshot>>;
+  let preservedLocalDocs = false;
   suppressPush = true;
   useStore.setState((prev) => ({
     ...prev,
@@ -176,12 +203,17 @@ function applyCloudData(data: unknown) {
     ...(cloud.billing && { billing: cloud.billing }),
     ...(cloud.catalog && { catalog: cloud.catalog }),
     ...(cloud.customers && { customers: cloud.customers }),
-    ...(cloud.docs && { docs: cloud.docs }),
+    ...(cloud.docs && (() => {
+      const merged = mergeCloudDocs(cloud.docs, prev.docs ?? []);
+      preservedLocalDocs = merged.preserved;
+      return { docs: merged.docs };
+    })()),
     ...(cloud.expenses && { expenses: cloud.expenses }),
     ...(cloud.expenseCategories && { expenseCategories: cloud.expenseCategories }),
     ...(cloud.density && { density: cloud.density }),
   }));
   suppressPush = false;
+  if (preservedLocalDocs) schedulePush();
 }
 
 async function claimStoredWorkspaceForUser() {
@@ -195,6 +227,16 @@ async function claimStoredWorkspaceForUser() {
 }
 
 async function loadAuthedWorkspace() {
+  const stored = getStoredWorkspace();
+  let storedData: unknown = null;
+  if (stored) {
+    try {
+      const { data } = await supabase.rpc("get_workspace", { p_id: stored.id, p_token: stored.token });
+      storedData = data;
+    } catch {
+      storedData = null;
+    }
+  }
   await claimStoredWorkspaceForUser();
   const { data, error } = await supabase.rpc("get_my_workspace");
   if (error) throw error;
@@ -220,7 +262,18 @@ async function loadAuthedWorkspace() {
     await supabase.rpc("save_my_workspace", { p_data: local as unknown as Json });
     clearDirty();
   } else {
-    applyCloudData(cloud);
+    const storedDocs = docsFromCloudData(storedData);
+    if (storedDocs.length && stored?.id !== row.id) {
+      const cloudObject = cloud && typeof cloud === "object" ? cloud as Partial<ReturnType<typeof snapshot>> : {};
+      const merged = mergeCloudDocs(cloudObject.docs ?? [], storedDocs);
+      applyCloudData({ ...cloudObject, docs: merged.docs });
+      if (merged.preserved) {
+        await supabase.rpc("save_my_workspace", { p_data: snapshot() as unknown as Json });
+        clearDirty();
+      }
+    } else {
+      applyCloudData(cloud);
+    }
   }
 }
 
