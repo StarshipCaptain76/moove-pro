@@ -168,7 +168,7 @@ function schedulePush() {
 function shouldPreserveLocalDoc(doc: Doc): boolean {
   if (!doc.archived) return true;
   const today = new Date().toISOString().slice(0, 10);
-  return doc.scheduledDate === today || (doc.status === "paid" && doc.paidAt?.startsWith(today));
+  return doc.scheduledDate === today || (doc.status === "paid" && !!doc.paidAt?.startsWith(today));
 }
 
 function mergeCloudDocs(cloudDocs: Doc[], localDocs: Doc[]): { docs: Doc[]; preserved: boolean } {
