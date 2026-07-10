@@ -39,7 +39,8 @@ function Index() {
   const [showArchived, setShowArchived] = useState(false);
 
   const today = format(new Date(), "yyyy-MM-dd");
-  const todayJobs = visible.filter((d) => d.scheduledDate === today);
+  const jobDate = (d: Doc) => d.scheduledDate || (d.status === "paid" && d.paidAt ? format(new Date(d.paidAt), "yyyy-MM-dd") : undefined);
+  const todayJobs = visible.filter((d) => jobDate(d) === today);
 
   const thisMonth = format(new Date(), "yyyy-MM");
   const inThisMonth = (d: (typeof docs)[number]) => (d.createdAt ?? "").startsWith(thisMonth);
