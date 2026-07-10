@@ -67,7 +67,11 @@ function PaymentIndicator({ doc }: { doc: Doc }) {
 }
 
 const todayIso = () => format(new Date(), "yyyy-MM-dd");
-const paidDate = (doc: Doc) => (doc.status === "paid" && doc.paidAt ? format(new Date(doc.paidAt), "yyyy-MM-dd") : undefined);
+const paidDate = (doc: Doc) => {
+  if (doc.status !== "paid" || !doc.paidAt) return undefined;
+  const iso = format(new Date(doc.paidAt), "yyyy-MM-dd");
+  return !doc.archived || iso === todayIso() ? iso : undefined;
+};
 const plannerDate = (doc: Doc) => doc.scheduledDate || paidDate(doc);
 
 type View = "agenda" | "week" | "month";
