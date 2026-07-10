@@ -472,7 +472,7 @@ function MonthCell({ date, iso, inMonth, docs }: { date: Date; iso: string; inMo
 function MiniJob({ doc }: { doc: Doc }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: doc.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
-  const c = CATEGORIES[jobCategory(doc)];
+  const c = MATERIALS[jobMaterialCategory(doc)];
   const open = usePlannerActions();
   const lp = useLongPress(() => open(doc));
   return (
