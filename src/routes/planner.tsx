@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { DatePicker } from "@/components/app/DatePicker";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { flushSync } from "@/lib/sync";
 import { createContext, useContext } from "react";
 
 const JobActionsCtx = createContext<((d: Doc) => void) | null>(null);
