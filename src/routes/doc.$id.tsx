@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod } from "@/lib/store";
 import { downloadPdf } from "@/lib/pdf";
 import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -45,6 +45,26 @@ function DocPage() {
   const doc = docs.find((d) => d.id === id);
   const distanceFn = useServerFn(routeDistance);
   const [calcing, setCalcing] = useState(false);
+
+  // Build a full picker list by unioning the customers store with unique
+  // customers embedded on past docs (historical imports never populated the
+  // customers array, so they only exist inside their doc records).
+  const allCustomers = useMemo(() => {
+    const seen = new Map<string, typeof customers[number]>();
+    const keyOf = (c: { name?: string; phone?: string; email?: string }) =>
+      `${(c.name ?? "").trim().toLowerCase()}|${(c.phone ?? "").trim()}|${(c.email ?? "").trim().toLowerCase()}`;
+    customers.forEach((c) => {
+      if (!c.name) return;
+      seen.set(keyOf(c), c);
+    });
+    docs.forEach((d) => {
+      const c = d.customer;
+      if (!c?.name) return;
+      const k = keyOf(c);
+      if (!seen.has(k)) seen.set(k, c);
+    });
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [customers, docs]);
 
   if (!doc) {
     return (
@@ -152,7 +172,7 @@ function DocPage() {
                 </div>
                 <CustomerCombobox
                   value={doc.customer.name}
-                  customers={customers}
+                  customers={allCustomers}
                   onType={(name) => updateCust({ name })}
                   onPick={(c) => upsertDoc({ ...doc, customer: { ...c } })}
                 />
