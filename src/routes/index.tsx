@@ -7,6 +7,7 @@ import { ChevronRight, FileText, Truck } from "lucide-react";
 import { format, differenceInCalendarDays } from "date-fns";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({ component: Index });
 
