@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { useStore } from "./store";
+import { useStore, type Doc } from "./store";
 import type { Json } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 
@@ -165,9 +165,30 @@ function schedulePush() {
   pushTimer = setTimeout(push, 600);
 }
 
+function shouldPreserveLocalDoc(doc: Doc): boolean {
+  if (!doc.archived) return true;
+  const today = new Date().toISOString().slice(0, 10);
+  return doc.scheduledDate === today || (doc.status === "paid" && doc.paidAt?.startsWith(today));
+}
+
+function mergeCloudDocs(cloudDocs: Doc[], localDocs: Doc[]): { docs: Doc[]; preserved: boolean } {
+  const byId = new Map(cloudDocs.map((doc) => [doc.id, doc]));
+  let preserved = false;
+  localDocs.forEach((localDoc) => {
+    if (!shouldPreserveLocalDoc(localDoc)) return;
+    const cloudDoc = byId.get(localDoc.id);
+    if (!cloudDoc || (cloudDoc.archived && !localDoc.archived)) {
+      byId.set(localDoc.id, localDoc);
+      preserved = true;
+    }
+  });
+  return { docs: Array.from(byId.values()), preserved };
+}
+
 function applyCloudData(data: unknown) {
   if (!data || typeof data !== "object") return;
   const cloud = data as Partial<ReturnType<typeof snapshot>>;
+  let preservedLocalDocs = false;
   suppressPush = true;
   useStore.setState((prev) => ({
     ...prev,
@@ -176,12 +197,17 @@ function applyCloudData(data: unknown) {
     ...(cloud.billing && { billing: cloud.billing }),
     ...(cloud.catalog && { catalog: cloud.catalog }),
     ...(cloud.customers && { customers: cloud.customers }),
-    ...(cloud.docs && { docs: cloud.docs }),
+    ...(cloud.docs && (() => {
+      const merged = mergeCloudDocs(cloud.docs, prev.docs ?? []);
+      preservedLocalDocs = merged.preserved;
+      return { docs: merged.docs };
+    })()),
     ...(cloud.expenses && { expenses: cloud.expenses }),
     ...(cloud.expenseCategories && { expenseCategories: cloud.expenseCategories }),
     ...(cloud.density && { density: cloud.density }),
   }));
   suppressPush = false;
+  if (preservedLocalDocs) schedulePush();
 }
 
 async function claimStoredWorkspaceForUser() {
