@@ -131,11 +131,22 @@ function Index() {
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <Card className={`p-3 sm:p-4 ${accent ? "border-primary/30 bg-primary/5" : ""}`}>
+function Stat({ label, value, accent, to, search }: { label: string; value: string; accent?: boolean; to?: string; search?: Record<string, unknown> }) {
+  const body = (
+    <>
       <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={`font-display mt-1 leading-none ${accent ? "text-primary" : ""} text-xl sm:text-2xl truncate`}>{value}</div>
+    </>
+  );
+  return (
+    <Card className={cn("p-3 sm:p-4", accent ? "border-primary/30 bg-primary/5" : "", to && "hover:bg-accent/50 transition-colors")}>
+      {to ? (
+        <Link to={to} search={search} className="block">
+          {body}
+        </Link>
+      ) : (
+        body
+      )}
     </Card>
   );
 }
