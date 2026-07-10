@@ -7,6 +7,7 @@ import { ChevronRight, FileText, Truck } from "lucide-react";
 import { format, differenceInCalendarDays } from "date-fns";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({ component: Index });
 
@@ -64,8 +65,8 @@ function Index() {
       <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
         <Stat label="Outstanding" value={fmtMoney(stats.outstanding, billing.currency)} accent />
         <Stat label="Paid (month)" value={fmtMoney(stats.paidThisMonth, billing.currency)} />
-        <Stat label="Quotes (month)" value={String(stats.quotes)} />
-        <Stat label="Invoices (month)" value={String(stats.invoices)} />
+        <Stat label="Quotes (month)" value={String(stats.quotes)} to="/docs" search={{ type: "quote" }} />
+        <Stat label="Invoices (month)" value={String(stats.invoices)} to="/docs" search={{ type: "invoice" }} />
       </div>
 
       <Card className="p-3 sm:p-4">
@@ -130,11 +131,22 @@ function Index() {
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <Card className={`p-3 sm:p-4 ${accent ? "border-primary/30 bg-primary/5" : ""}`}>
+function Stat({ label, value, accent, to, search }: { label: string; value: string; accent?: boolean; to?: string; search?: Record<string, unknown> }) {
+  const body = (
+    <>
       <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={`font-display mt-1 leading-none ${accent ? "text-primary" : ""} text-xl sm:text-2xl truncate`}>{value}</div>
+    </>
+  );
+  return (
+    <Card className={cn("p-3 sm:p-4", accent ? "border-primary/30 bg-primary/5" : "", to && "hover:bg-accent/50 transition-colors")}>
+      {to ? (
+        <Link to={to} search={search} className="block">
+          {body}
+        </Link>
+      ) : (
+        body
+      )}
     </Card>
   );
 }
