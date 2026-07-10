@@ -228,9 +228,15 @@ async function claimStoredWorkspaceForUser() {
 
 async function loadAuthedWorkspace() {
   const stored = getStoredWorkspace();
-  const storedData = stored
-    ? await supabase.rpc("get_workspace", { p_id: stored.id, p_token: stored.token }).then((r) => r.data).catch(() => null)
-    : null;
+  let storedData: unknown = null;
+  if (stored) {
+    try {
+      const { data } = await supabase.rpc("get_workspace", { p_id: stored.id, p_token: stored.token });
+      storedData = data;
+    } catch {
+      storedData = null;
+    }
+  }
   await claimStoredWorkspaceForUser();
   const { data, error } = await supabase.rpc("get_my_workspace");
   if (error) throw error;
