@@ -154,16 +154,6 @@ interface State {
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-const numberSuffix = (value: string, prefix: string) => {
-  const trimmed = value.trim();
-  const escapedPrefix = prefix.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const prefixed = escapedPrefix
-    ? trimmed.match(new RegExp(`^${escapedPrefix}[\\s-]*(\\d+)$`, "i"))
-    : null;
-  const fallback = trimmed.match(/(\d+)$/);
-  return Number((prefixed ?? fallback)?.[1] ?? 0);
-};
-
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
