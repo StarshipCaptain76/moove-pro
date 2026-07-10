@@ -47,6 +47,9 @@ function PlannerPage() {
   const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()));
   const [showUnsched, setShowUnsched] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const [actionDoc, setActionDoc] = useState<Doc | null>(null);
+  const [moveMode, setMoveMode] = useState(false);
+  const openActions = (d: Doc) => { setActionDoc(d); setMoveMode(false); };
 
   const jobs = useMemo(() => docs.filter((d) => d.status === "accepted" || d.status === "paid"), [docs]);
   const byDay = (iso: string) =>
@@ -78,6 +81,26 @@ function PlannerPage() {
   const monthGridEnd = endOfWeek(endOfMonth(monthAnchor), { weekStartsOn: 1 });
   const monthDays: Date[] = [];
   for (let d = monthGridStart; d <= monthGridEnd; d = addDays(d, 1)) monthDays.push(d);
+
+  const closeActions = () => { setActionDoc(null); setMoveMode(false); };
+  const markPaid = (m: PayMethod) => {
+    if (!actionDoc) return;
+    upsertDoc({ ...actionDoc, status: "paid", paymentMethod: m, paidAt: new Date().toISOString() });
+    toast.success(`Marked paid (${m.toUpperCase()})`);
+    closeActions();
+  };
+  const cancelJob = () => {
+    if (!actionDoc) return;
+    upsertDoc({ ...actionDoc, status: "cancelled" });
+    toast.success("Job cancelled");
+    closeActions();
+  };
+  const moveTo = (iso: string | undefined) => {
+    if (!actionDoc) return;
+    upsertDoc({ ...actionDoc, scheduledDate: iso, dayOrder: iso ? byDay(iso).length : undefined });
+    toast.success(iso ? `Moved to ${iso}` : "Unscheduled");
+    closeActions();
+  };
 
   return (
     <Shell>
