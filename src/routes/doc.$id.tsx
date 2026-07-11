@@ -172,10 +172,10 @@ function DocPage() {
               <div><Label>Email</Label><Input value={doc.customer.email} onChange={(e) => updateCust({ email: e.target.value })} /></div>
               <div className="col-span-2">
                 <Label>Customer address</Label>
-                <Input
+                <AddressAutocomplete
                   value={doc.customer.address ?? ""}
-                  onChange={(e) => updateCust({ address: e.target.value })}
                   placeholder="Street, city"
+                  onChange={(v) => updateCust({ address: v.address })}
                 />
               </div>
               <div className="col-span-2">
