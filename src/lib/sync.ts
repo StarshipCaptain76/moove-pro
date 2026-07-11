@@ -311,7 +311,7 @@ async function loadAll() {
         phone: r.phone,
         email: r.email,
         address: r.address ?? undefined,
-        taxNumber: (r as { tax_number?: string | null }).tax_number ?? undefined,
+        taxNumber: r.tax_number ?? undefined,
       }));
 
       const docs: Doc[] = (docsRes.data ?? []).map((r) => ({
