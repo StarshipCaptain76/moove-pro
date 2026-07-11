@@ -74,6 +74,7 @@ export interface Customer {
   phone: string;
   email: string;
   address?: string;
+  taxNumber?: string;
 }
 
 export interface Doc {
