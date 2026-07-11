@@ -126,6 +126,7 @@ export function pushCustomer(c: Customer) {
       phone: c.phone,
       email: c.email,
       address: c.address ?? null,
+      tax_number: c.taxNumber ?? null,
     });
     if (error) throw error;
   });
@@ -310,6 +311,7 @@ async function loadAll() {
         phone: r.phone,
         email: r.email,
         address: r.address ?? undefined,
+        taxNumber: r.tax_number ?? undefined,
       }));
 
       const docs: Doc[] = (docsRes.data ?? []).map((r) => ({
