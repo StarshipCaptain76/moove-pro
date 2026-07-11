@@ -357,17 +357,55 @@ async function loadAll() {
         ? remoteCategoryNames
         : DEFAULT_EXPENSE_CATEGORIES;
 
+      // Merge cloud with any pre-existing local (anonymous) data so we never
+      // wipe records the user created before signing in, or the previous
+      // signed-in session's persisted store. Cloud wins on id collisions.
+      const mergeById = <T extends { id: string }>(cloud: T[], local: T[]): T[] => {
+        const map = new Map<string, T>();
+        for (const l of local) map.set(l.id, l);
+        for (const c of cloud) map.set(c.id, c);
+        return Array.from(map.values());
+      };
+
+      const mergedCatalog = mergeById(catalog, prev.catalog ?? []);
+      const mergedCustomers = mergeById(customers, prev.customers ?? []);
+      const mergedDocs = mergeById(docs, prev.docs ?? []);
+      const mergedExpenses = mergeById(expenses, prev.expenses ?? []);
+
       useStore.setState({
         company,
         banking,
         billing,
         density,
-        catalog,
-        customers,
-        docs,
-        expenses,
+        catalog: mergedCatalog,
+        customers: mergedCustomers,
+        docs: mergedDocs,
+        expenses: mergedExpenses,
         expenseCategories,
       });
+
+      // Push any local-only rows up to the cloud so the merge persists.
+      const cloudIds = {
+        catalog: new Set(catalog.map((x) => x.id)),
+        customers: new Set(customers.map((x) => x.id)),
+        docs: new Set(docs.map((x) => x.id)),
+        expenses: new Set(expenses.map((x) => x.id)),
+      };
+      const localOnlyCatalog = (prev.catalog ?? []).filter((x) => !cloudIds.catalog.has(x.id));
+      const localOnlyCustomers = (prev.customers ?? []).filter((x) => !cloudIds.customers.has(x.id));
+      const localOnlyDocs = (prev.docs ?? []).filter((x) => !cloudIds.docs.has(x.id));
+      const localOnlyExpenses = (prev.expenses ?? []).filter((x) => !cloudIds.expenses.has(x.id));
+      const localOnlyCategories = (prev.expenseCategories ?? []).filter(
+        (n) => !remoteCategoryNames.includes(n),
+      );
+      // Defer push out of the suppression window.
+      setTimeout(() => {
+        localOnlyCatalog.forEach(pushCatalogItem);
+        localOnlyCustomers.forEach(pushCustomer);
+        localOnlyDocs.forEach(pushDoc);
+        localOnlyExpenses.forEach(pushExpense);
+        localOnlyCategories.forEach(pushExpenseCategory);
+      }, 0);
     } finally {
       suppressPush = false;
     }
