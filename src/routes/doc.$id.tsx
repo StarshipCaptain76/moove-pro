@@ -171,6 +171,22 @@ function DocPage() {
               <div><Label>Phone</Label><Input value={doc.customer.phone} onChange={(e) => updateCust({ phone: e.target.value })} placeholder="0821234567" /></div>
               <div><Label>Email</Label><Input value={doc.customer.email} onChange={(e) => updateCust({ email: e.target.value })} /></div>
               <div className="col-span-2">
+                <Label>Customer address</Label>
+                <Input
+                  value={doc.customer.address ?? ""}
+                  onChange={(e) => updateCust({ address: e.target.value })}
+                  placeholder="Street, city"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label>VAT / Tax number</Label>
+                <Input
+                  value={doc.customer.taxNumber ?? ""}
+                  onChange={(e) => updateCust({ taxNumber: e.target.value })}
+                  placeholder="Optional"
+                />
+              </div>
+              <div className="col-span-2">
                 <Label>From address</Label>
                 <AddressAutocomplete
                   value={doc.fromAddress ?? ""}
