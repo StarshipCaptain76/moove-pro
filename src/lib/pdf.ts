@@ -60,7 +60,13 @@ export async function generatePdf(
   pdf.setFontSize(9);
   pdf.text("BILL TO", W / 2, y);
   pdf.setFont("helvetica", "normal");
-  const custLines = [doc.customer.name, doc.customer.phone, doc.customer.email, doc.customer.address].filter(Boolean) as string[];
+  const custLines = [
+    doc.customer.name,
+    doc.customer.phone,
+    doc.customer.email,
+    doc.customer.address,
+    doc.customer.taxNumber ? `VAT/Tax No: ${doc.customer.taxNumber}` : undefined,
+  ].filter(Boolean) as string[];
   custLines.forEach((l, i) => pdf.text(l, W / 2, y + 5 + i * 4));
 
   y = 78;
