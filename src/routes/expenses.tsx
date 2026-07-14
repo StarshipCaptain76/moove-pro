@@ -38,6 +38,23 @@ function ExpensesPage() {
 
   const total = monthExpenses.reduce((s, e) => s + (e.amount || 0), 0);
 
+  const categoryTotals = useMemo(() => {
+    const map = new Map<string, number>();
+    monthExpenses.forEach((e) => {
+      map.set(e.category, (map.get(e.category) || 0) + (e.amount || 0));
+    });
+    return Array.from(map.entries())
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        color: categoryColor(category).border,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [monthExpenses]);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const grouped = useMemo(() => {
     const g = new Map<string, Expense[]>();
     monthExpenses.forEach((e) => {
