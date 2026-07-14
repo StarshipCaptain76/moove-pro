@@ -262,6 +262,36 @@ export function pushMany(docs: Doc[], expenses: Expense[], catalog: CatalogItem[
 
 // ============ initial load ============
 
+const CLOUD_PAGE_SIZE = 1000;
+
+async function fetchOwnedRows<T>(
+  table: "catalog_items" | "customers" | "docs" | "expenses" | "expense_categories",
+  uid: string,
+  orderColumn = "id",
+): Promise<T[]> {
+  const rows: T[] = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .eq("owner_user_id", uid)
+      .order(orderColumn)
+      .range(from, from + CLOUD_PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    const page = (data ?? []) as T[];
+    rows.push(...page);
+
+    if (page.length < CLOUD_PAGE_SIZE) break;
+    from += CLOUD_PAGE_SIZE;
+  }
+
+  return rows;
+}
+
 async function loadAll() {
   const uid = state.userId;
   if (!uid) return;
@@ -271,17 +301,61 @@ async function loadAll() {
   emit();
 
   try {
-    const [profileRes, catRes, custRes, docsRes, expRes, catCatRes] = await Promise.all([
+    const [profileRes, catRows, customerRows, docRows, expenseRows, categoryRows] = await Promise.all([
       supabase.from("company_profile").select("*").eq("owner_user_id", uid).maybeSingle(),
-      supabase.from("catalog_items").select("*").eq("owner_user_id", uid),
-      supabase.from("customers").select("*").eq("owner_user_id", uid),
-      supabase.from("docs").select("*").eq("owner_user_id", uid),
-      supabase.from("expenses").select("*").eq("owner_user_id", uid),
-      supabase.from("expense_categories").select("*").eq("owner_user_id", uid),
+      fetchOwnedRows<{
+        id: string;
+        name: string;
+        price: number | string;
+        unit: CatalogItem["unit"];
+      }>("catalog_items", uid),
+      fetchOwnedRows<{
+        id: string;
+        name: string;
+        phone: string;
+        email: string;
+        address: string | null;
+        tax_number: string | null;
+      }>("customers", uid),
+      fetchOwnedRows<{
+        id: string;
+        number: string;
+        type: Doc["type"];
+        status: Doc["status"];
+        created_at: string;
+        scheduled_date: string | null;
+        day_order: number | null;
+        archived: boolean;
+        customer: unknown;
+        items: unknown;
+        notes: string | null;
+        deposit_pct: number | string;
+        deposit_paid: boolean;
+        payment_method: Doc["paymentMethod"] | null;
+        paid_at: string | null;
+        from_address: string | null;
+        to_address: string | null;
+        from_coords: unknown;
+        to_coords: unknown;
+        distance_km: number | string | null;
+      }>("docs", uid),
+      fetchOwnedRows<{
+        id: string;
+        created_at: string;
+        date: string;
+        category: string;
+        vendor: string;
+        description: string | null;
+        amount: number | string;
+        vat_amount: number | string | null;
+        payment_method: Expense["paymentMethod"] | null;
+        notes: string | null;
+        receipt_image: string | null;
+        linked_doc_id: string | null;
+      }>("expenses", uid),
+      fetchOwnedRows<{ name: string }>("expense_categories", uid, "name"),
     ]);
-    for (const r of [profileRes, catRes, custRes, docsRes, expRes, catCatRes]) {
-      if (r.error) throw r.error;
-    }
+    if (profileRes.error) throw profileRes.error;
 
     suppressPush = true;
     try {
@@ -298,14 +372,14 @@ async function loadAll() {
         : prev.billing;
       const density = (profileRow?.density as Density | undefined) ?? prev.density;
 
-      const catalog: CatalogItem[] = (catRes.data ?? []).map((r) => ({
+      const catalog: CatalogItem[] = catRows.map((r) => ({
         id: r.id,
         name: r.name,
         price: Number(r.price),
         unit: r.unit as CatalogItem["unit"],
       }));
 
-      const customers: Customer[] = (custRes.data ?? []).map((r) => ({
+      const customers: Customer[] = customerRows.map((r) => ({
         id: r.id,
         name: r.name,
         phone: r.phone,
@@ -314,7 +388,7 @@ async function loadAll() {
         taxNumber: r.tax_number ?? undefined,
       }));
 
-      const docs: Doc[] = (docsRes.data ?? []).map((r) => ({
+      const docs: Doc[] = docRows.map((r) => ({
         id: r.id,
         number: r.number,
         type: r.type as Doc["type"],
@@ -337,7 +411,7 @@ async function loadAll() {
         distanceKm: r.distance_km != null ? Number(r.distance_km) : undefined,
       }));
 
-      const expenses: Expense[] = (expRes.data ?? []).map((r) => ({
+      const expenses: Expense[] = expenseRows.map((r) => ({
         id: r.id,
         createdAt: r.created_at,
         date: r.date,
@@ -352,7 +426,7 @@ async function loadAll() {
         linkedDocId: r.linked_doc_id ?? undefined,
       }));
 
-      const remoteCategoryNames = (catCatRes.data ?? []).map((r) => r.name);
+      const remoteCategoryNames = categoryRows.map((r) => r.name);
       const expenseCategories = remoteCategoryNames.length
         ? remoteCategoryNames
         : DEFAULT_EXPENSE_CATEGORIES;
@@ -412,7 +486,7 @@ async function loadAll() {
 
     // Seed defaults for a brand-new user.
     if (!profileRes.data) pushCompanyProfile();
-    if (!(catCatRes.data ?? []).length) DEFAULT_EXPENSE_CATEGORIES.forEach(pushExpenseCategory);
+    if (!categoryRows.length) DEFAULT_EXPENSE_CATEGORIES.forEach(pushExpenseCategory);
   } finally {
     state.loading = false;
     state.status = runningTask();
