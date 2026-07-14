@@ -425,6 +425,29 @@ export async function initSync() {
   if (started || typeof window === "undefined") return;
   started = true;
 
+  // Wait for the zustand `persist` middleware to finish rehydrating from
+  // localStorage before we read/merge state. Otherwise loadAll() runs first,
+  // writes cloud data into the store, and then a late rehydrate overwrites
+  // it with the stale (or empty) persisted snapshot — making just-loaded
+  // records "disappear" moments after they render.
+  const persistApi = (useStore as unknown as {
+    persist?: {
+      hasHydrated: () => boolean;
+      onFinishHydration: (cb: () => void) => () => void;
+      rehydrate: () => Promise<void> | void;
+    };
+  }).persist;
+  if (persistApi && !persistApi.hasHydrated()) {
+    await new Promise<void>((resolve) => {
+      const unsub = persistApi.onFinishHydration(() => {
+        unsub();
+        resolve();
+      });
+      // Kick a rehydrate in case one isn't in flight (idempotent).
+      void persistApi.rehydrate();
+    });
+  }
+
   supabase.auth.onAuthStateChange((event, session) => {
     if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
     const newUid = session?.user.id ?? null;
