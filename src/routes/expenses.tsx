@@ -123,7 +123,7 @@ function ExpensesPage() {
                 />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
               <div className="text-center">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   Total
