@@ -99,6 +99,36 @@ function ExpensesPage() {
         </Button>
       </Card>
 
+      {monthExpenses.length > 0 && mounted && (
+        <Card className="p-3 mb-3">
+          <div className="h-56 sm:h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={categoryTotals}
+                  dataKey="amount"
+                  nameKey="category"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius="80%"
+                  label={({ category, percent }) =>
+                    `${category} ${(percent * 100).toFixed(0)}%`
+                  }
+                >
+                  {categoryTotals.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: number) => fmtMoney(value, billing.currency)}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
+
       {grouped.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground text-sm">
           No expenses this month. Tap + to snap a slip.
