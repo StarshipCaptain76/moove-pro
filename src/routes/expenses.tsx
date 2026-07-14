@@ -12,7 +12,7 @@ import { ReceiptCapture } from "@/components/app/ReceiptCapture";
 import { parseReceipt } from "@/lib/expenses.functions";
 import { DatePicker } from "@/components/app/DatePicker";
 import { InlineTumbler } from "@/components/app/InlineTumbler";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Sparkles, X, Loader2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { toast } from "sonner";
