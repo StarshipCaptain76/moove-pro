@@ -267,6 +267,7 @@ const CLOUD_PAGE_SIZE = 1000;
 async function fetchOwnedRows<T>(
   table: "catalog_items" | "customers" | "docs" | "expenses" | "expense_categories",
   uid: string,
+  orderColumn = "id",
 ): Promise<T[]> {
   const rows: T[] = [];
   let from = 0;
@@ -276,6 +277,7 @@ async function fetchOwnedRows<T>(
       .from(table)
       .select("*")
       .eq("owner_user_id", uid)
+      .order(orderColumn)
       .range(from, from + CLOUD_PAGE_SIZE - 1);
 
     if (error) throw error;
@@ -351,7 +353,7 @@ async function loadAll() {
         receipt_image: string | null;
         linked_doc_id: string | null;
       }>("expenses", uid),
-      fetchOwnedRows<{ name: string }>("expense_categories", uid),
+      fetchOwnedRows<{ name: string }>("expense_categories", uid, "name"),
     ]);
     if (profileRes.error) throw profileRes.error;
 
