@@ -17,6 +17,7 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, Sparkles, X, Loader2 } from "l
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { toast } from "sonner";
 import { format, parseISO, startOfMonth, endOfMonth, addMonths } from "date-fns";
+import { refreshSync } from "@/lib/sync";
 
 export const Route = createFileRoute("/expenses")({ component: ExpensesPage });
 
@@ -54,6 +55,23 @@ function ExpensesPage() {
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    const refresh = () => {
+      void refreshSync();
+    };
+
+    refresh();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refresh();
+    });
+
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
 
   const grouped = useMemo(() => {
     const g = new Map<string, Expense[]>();

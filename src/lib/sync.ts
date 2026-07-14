@@ -295,6 +295,7 @@ async function fetchOwnedRows<T>(
 async function loadAll() {
   const uid = state.userId;
   if (!uid) return;
+  if (state.loading) return;
 
   state.loading = true;
   state.status = "loading";
@@ -494,6 +495,18 @@ async function loadAll() {
   }
 }
 
+export async function refreshSync() {
+  if (typeof window === "undefined") return;
+
+  if (!state.userId) {
+    const { data: userRes } = await supabase.auth.getUser();
+    state.userId = userRes.user?.id ?? null;
+    emit();
+  }
+
+  if (state.userId) await loadAll();
+}
+
 let started = false;
 export async function initSync() {
   if (started || typeof window === "undefined") return;
@@ -534,7 +547,7 @@ export async function initSync() {
   const { data: userRes } = await supabase.auth.getUser();
   state.userId = userRes.user?.id ?? null;
   emit();
-  if (state.userId) await loadAll();
+  if (state.userId) await refreshSync();
 }
 
 // Legacy helpers kept as no-ops so we don't break any straggling import.
