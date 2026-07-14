@@ -495,8 +495,31 @@ async function loadAll() {
   }
 }
 
+async function waitForPersistHydration() {
+  const persistApi = (useStore as unknown as {
+    persist?: {
+      hasHydrated: () => boolean;
+      onFinishHydration: (cb: () => void) => () => void;
+      rehydrate: () => Promise<void> | void;
+    };
+  }).persist;
+
+  if (!persistApi || persistApi.hasHydrated()) return;
+
+  await new Promise<void>((resolve) => {
+    const unsub = persistApi.onFinishHydration(() => {
+      unsub();
+      resolve();
+    });
+    // Kick a rehydrate in case one isn't in flight (idempotent).
+    void persistApi.rehydrate();
+  });
+}
+
 export async function refreshSync() {
   if (typeof window === "undefined") return;
+
+  await waitForPersistHydration();
 
   if (!state.userId) {
     const { data: userRes } = await supabase.auth.getUser();
@@ -517,23 +540,7 @@ export async function initSync() {
   // writes cloud data into the store, and then a late rehydrate overwrites
   // it with the stale (or empty) persisted snapshot — making just-loaded
   // records "disappear" moments after they render.
-  const persistApi = (useStore as unknown as {
-    persist?: {
-      hasHydrated: () => boolean;
-      onFinishHydration: (cb: () => void) => () => void;
-      rehydrate: () => Promise<void> | void;
-    };
-  }).persist;
-  if (persistApi && !persistApi.hasHydrated()) {
-    await new Promise<void>((resolve) => {
-      const unsub = persistApi.onFinishHydration(() => {
-        unsub();
-        resolve();
-      });
-      // Kick a rehydrate in case one isn't in flight (idempotent).
-      void persistApi.rehydrate();
-    });
-  }
+  await waitForPersistHydration();
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
