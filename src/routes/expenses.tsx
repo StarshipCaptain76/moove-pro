@@ -12,8 +12,9 @@ import { ReceiptCapture } from "@/components/app/ReceiptCapture";
 import { parseReceipt } from "@/lib/expenses.functions";
 import { DatePicker } from "@/components/app/DatePicker";
 import { InlineTumbler } from "@/components/app/InlineTumbler";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Sparkles, X, Loader2 } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { toast } from "sonner";
 import { format, parseISO, startOfMonth, endOfMonth, addMonths } from "date-fns";
 
@@ -36,6 +37,23 @@ function ExpensesPage() {
   }, [expenses, month]);
 
   const total = monthExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+
+  const categoryTotals = useMemo(() => {
+    const map = new Map<string, number>();
+    monthExpenses.forEach((e) => {
+      map.set(e.category, (map.get(e.category) || 0) + (e.amount || 0));
+    });
+    return Array.from(map.entries())
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        color: categoryColor(category).border,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [monthExpenses]);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const grouped = useMemo(() => {
     const g = new Map<string, Expense[]>();
@@ -81,6 +99,61 @@ function ExpensesPage() {
         </Button>
       </Card>
 
+      {monthExpenses.length > 0 && mounted && (
+        <Card className="p-3 mb-3">
+          <div className="h-48 relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={categoryTotals}
+                  dataKey="amount"
+                  nameKey="category"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="55%"
+                  outerRadius="80%"
+                  paddingAngle={2}
+                >
+                  {categoryTotals.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => fmtMoney(value, billing.currency)} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+              <div className="text-center">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Total
+                </div>
+                <div className="font-display text-lg tracking-wide">
+                  {fmtMoney(total, billing.currency)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {categoryTotals.map((c) => {
+              const pct = total ? ((c.amount / total) * 100).toFixed(0) : "0";
+              return (
+                <div key={c.category} className="flex items-center gap-2 text-sm min-w-0">
+                  <span
+                    className="h-3 w-3 rounded-full shrink-0"
+                    style={{ backgroundColor: c.color }}
+                  />
+                  <span className="flex-1 truncate">{c.category}</span>
+                  <span className="font-medium whitespace-nowrap">
+                    {fmtMoney(c.amount, billing.currency)}
+                  </span>
+                  <span className="text-xs text-muted-foreground w-8 text-right">{pct}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       {grouped.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground text-sm">
           No expenses this month. Tap + to snap a slip.
@@ -125,7 +198,9 @@ function ExpensesPage() {
                           {e.description}
                         </div>
                       </div>
-                      <div className="font-semibold shrink-0">{fmtMoney(e.amount, billing.currency)}</div>
+                      <div className="font-semibold shrink-0">
+                        {fmtMoney(e.amount, billing.currency)}
+                      </div>
                     </button>
                   );
                 })}
@@ -167,7 +242,9 @@ function ExpenseSheet({ expense, onClose }: { expense: Expense | null; onClose: 
     set({ receiptImage: dataUrl });
     setParsing(true);
     try {
-      const r = await parseReceipt({ data: { imageDataUrl: dataUrl, categories: expenseCategories } });
+      const r = await parseReceipt({
+        data: { imageDataUrl: dataUrl, categories: expenseCategories },
+      });
       set({
         date: r.date || draft.date,
         vendor: r.vendor || draft.vendor,
