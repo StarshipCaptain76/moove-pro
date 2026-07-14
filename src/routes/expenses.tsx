@@ -14,6 +14,7 @@ import { DatePicker } from "@/components/app/DatePicker";
 import { InlineTumbler } from "@/components/app/InlineTumbler";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Sparkles, X, Loader2 } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { toast } from "sonner";
 import { format, parseISO, startOfMonth, endOfMonth, addMonths } from "date-fns";
 
