@@ -100,56 +100,50 @@ function ExpensesPage() {
       </Card>
 
       {monthExpenses.length > 0 && mounted && (
-        <Card className="p-3 mb-3">
-          <div className="h-48 relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={categoryTotals}
-                  dataKey="amount"
-                  nameKey="category"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius="55%"
-                  outerRadius="80%"
-                  paddingAngle={2}
-                >
-                  {categoryTotals.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => fmtMoney(value, billing.currency)} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Total
-                </div>
-                <div className="font-display text-lg tracking-wide">
+        <Card className="p-2 mb-3">
+          <div className="flex items-center gap-3">
+            <div className="h-28 w-28 relative shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryTotals}
+                    dataKey="amount"
+                    nameKey="category"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="60%"
+                    outerRadius="95%"
+                    paddingAngle={2}
+                    isAnimationActive={false}
+                  >
+                    {categoryTotals.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => fmtMoney(value, billing.currency)} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="font-display text-[11px] tracking-wide leading-tight text-center">
                   {fmtMoney(total, billing.currency)}
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {categoryTotals.map((c) => {
-              const pct = total ? ((c.amount / total) * 100).toFixed(0) : "0";
-              return (
-                <div key={c.category} className="flex items-center gap-2 text-sm min-w-0">
-                  <span
-                    className="h-3 w-3 rounded-full shrink-0"
-                    style={{ backgroundColor: c.color }}
-                  />
-                  <span className="flex-1 truncate">{c.category}</span>
-                  <span className="font-medium whitespace-nowrap">
-                    {fmtMoney(c.amount, billing.currency)}
-                  </span>
-                  <span className="text-xs text-muted-foreground w-8 text-right">{pct}%</span>
-                </div>
-              );
-            })}
+            <div className="flex-1 min-w-0 max-h-28 overflow-y-auto pr-1 space-y-1">
+              {categoryTotals.map((c) => {
+                const pct = total ? ((c.amount / total) * 100).toFixed(0) : "0";
+                return (
+                  <div key={c.category} className="flex items-center gap-1.5 text-xs min-w-0">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: c.color }}
+                    />
+                    <span className="flex-1 truncate">{c.category}</span>
+                    <span className="text-muted-foreground w-7 text-right">{pct}%</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </Card>
       )}
