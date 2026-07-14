@@ -295,6 +295,7 @@ async function fetchOwnedRows<T>(
 async function loadAll() {
   const uid = state.userId;
   if (!uid) return;
+  if (state.loading) return;
 
   state.loading = true;
   state.status = "loading";
@@ -494,6 +495,41 @@ async function loadAll() {
   }
 }
 
+async function waitForPersistHydration() {
+  const persistApi = (useStore as unknown as {
+    persist?: {
+      hasHydrated: () => boolean;
+      onFinishHydration: (cb: () => void) => () => void;
+      rehydrate: () => Promise<void> | void;
+    };
+  }).persist;
+
+  if (!persistApi || persistApi.hasHydrated()) return;
+
+  await new Promise<void>((resolve) => {
+    const unsub = persistApi.onFinishHydration(() => {
+      unsub();
+      resolve();
+    });
+    // Kick a rehydrate in case one isn't in flight (idempotent).
+    void persistApi.rehydrate();
+  });
+}
+
+export async function refreshSync() {
+  if (typeof window === "undefined") return;
+
+  await waitForPersistHydration();
+
+  if (!state.userId) {
+    const { data: userRes } = await supabase.auth.getUser();
+    state.userId = userRes.user?.id ?? null;
+    emit();
+  }
+
+  if (state.userId) await loadAll();
+}
+
 let started = false;
 export async function initSync() {
   if (started || typeof window === "undefined") return;
@@ -504,23 +540,7 @@ export async function initSync() {
   // writes cloud data into the store, and then a late rehydrate overwrites
   // it with the stale (or empty) persisted snapshot — making just-loaded
   // records "disappear" moments after they render.
-  const persistApi = (useStore as unknown as {
-    persist?: {
-      hasHydrated: () => boolean;
-      onFinishHydration: (cb: () => void) => () => void;
-      rehydrate: () => Promise<void> | void;
-    };
-  }).persist;
-  if (persistApi && !persistApi.hasHydrated()) {
-    await new Promise<void>((resolve) => {
-      const unsub = persistApi.onFinishHydration(() => {
-        unsub();
-        resolve();
-      });
-      // Kick a rehydrate in case one isn't in flight (idempotent).
-      void persistApi.rehydrate();
-    });
-  }
+  await waitForPersistHydration();
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
@@ -534,7 +554,7 @@ export async function initSync() {
   const { data: userRes } = await supabase.auth.getUser();
   state.userId = userRes.user?.id ?? null;
   emit();
-  if (state.userId) await loadAll();
+  if (state.userId) await refreshSync();
 }
 
 // Legacy helpers kept as no-ops so we don't break any straggling import.
