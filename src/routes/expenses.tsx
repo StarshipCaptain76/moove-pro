@@ -101,7 +101,7 @@ function ExpensesPage() {
 
       {monthExpenses.length > 0 && mounted && (
         <Card className="p-3 mb-3">
-          <div className="h-48">
+          <div className="h-48 relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -123,6 +123,16 @@ function ExpensesPage() {
                 />
               </PieChart>
             </ResponsiveContainer>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="text-center">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Total
+                </div>
+                <div className="font-display text-lg tracking-wide">
+                  {fmtMoney(total, billing.currency)}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 mt-2">
