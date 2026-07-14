@@ -118,9 +118,7 @@ function ExpensesPage() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip
-                  formatter={(value: number) => fmtMoney(value, billing.currency)}
-                />
+                <Tooltip formatter={(value: number) => fmtMoney(value, billing.currency)} />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
@@ -148,9 +146,7 @@ function ExpensesPage() {
                   <span className="font-medium whitespace-nowrap">
                     {fmtMoney(c.amount, billing.currency)}
                   </span>
-                  <span className="text-xs text-muted-foreground w-8 text-right">
-                    {pct}%
-                  </span>
+                  <span className="text-xs text-muted-foreground w-8 text-right">{pct}%</span>
                 </div>
               );
             })}
@@ -202,7 +198,9 @@ function ExpensesPage() {
                           {e.description}
                         </div>
                       </div>
-                      <div className="font-semibold shrink-0">{fmtMoney(e.amount, billing.currency)}</div>
+                      <div className="font-semibold shrink-0">
+                        {fmtMoney(e.amount, billing.currency)}
+                      </div>
                     </button>
                   );
                 })}
@@ -244,7 +242,9 @@ function ExpenseSheet({ expense, onClose }: { expense: Expense | null; onClose: 
     set({ receiptImage: dataUrl });
     setParsing(true);
     try {
-      const r = await parseReceipt({ data: { imageDataUrl: dataUrl, categories: expenseCategories } });
+      const r = await parseReceipt({
+        data: { imageDataUrl: dataUrl, categories: expenseCategories },
+      });
       set({
         date: r.date || draft.date,
         vendor: r.vendor || draft.vendor,
