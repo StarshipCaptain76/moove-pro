@@ -60,16 +60,17 @@ function ExpensesPage() {
     const refresh = () => {
       void refreshSync();
     };
+    const refreshWhenVisible = () => {
+      if (!document.hidden) refresh();
+    };
 
     refresh();
     window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) refresh();
-    });
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, []);
 
