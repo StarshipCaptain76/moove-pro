@@ -101,7 +101,7 @@ function ExpensesPage() {
 
       {monthExpenses.length > 0 && mounted && (
         <Card className="p-3 mb-3">
-          <div className="h-56 sm:h-72">
+          <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -110,10 +110,9 @@ function ExpensesPage() {
                   nameKey="category"
                   cx="50%"
                   cy="50%"
+                  innerRadius="55%"
                   outerRadius="80%"
-                  label={({ category, percent }) =>
-                    `${category} ${(percent * 100).toFixed(0)}%`
-                  }
+                  paddingAngle={2}
                 >
                   {categoryTotals.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -122,9 +121,29 @@ function ExpensesPage() {
                 <Tooltip
                   formatter={(value: number) => fmtMoney(value, billing.currency)}
                 />
-                <Legend />
               </PieChart>
             </ResponsiveContainer>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {categoryTotals.map((c) => {
+              const pct = total ? ((c.amount / total) * 100).toFixed(0) : "0";
+              return (
+                <div key={c.category} className="flex items-center gap-2 text-sm min-w-0">
+                  <span
+                    className="h-3 w-3 rounded-full shrink-0"
+                    style={{ backgroundColor: c.color }}
+                  />
+                  <span className="flex-1 truncate">{c.category}</span>
+                  <span className="font-medium whitespace-nowrap">
+                    {fmtMoney(c.amount, billing.currency)}
+                  </span>
+                  <span className="text-xs text-muted-foreground w-8 text-right">
+                    {pct}%
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
