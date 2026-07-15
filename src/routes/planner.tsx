@@ -106,7 +106,7 @@ function PlannerPage() {
   // Paid docs without a scheduled date are historical / closed jobs — don't
   // surface them as "unscheduled". Only accepted jobs still need scheduling.
   const unscheduled = jobs.filter(
-    (d) => !d.scheduledDate && (d.status === "accepted" || d.type === "invoice"),
+    (d) => !d.archived && !d.scheduledDate && (d.status === "accepted" || d.type === "invoice"),
   );
 
   const onDragEnd = (e: DragEndEvent) => {
@@ -230,6 +230,17 @@ function PlannerPage() {
             </button>
             {showUnsched && (
               <DropZone id="unscheduled" className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!confirm(`Archive all ${unscheduled.length} unscheduled jobs? They will be hidden from the planner.`)) return;
+                    unscheduled.forEach((d) => upsertDoc({ ...d, archived: true }));
+                    void flushSync();
+                  }}
+                  className="mb-2 w-full text-xs px-3 py-2 rounded-md border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20"
+                >
+                  Archive all as historical
+                </button>
                 <div className="grid gap-2">
                   {unscheduled.map((d) => <JobCard key={d.id} doc={d} currency={billing.currency} vat={billing.vatPct} />)}
                 </div>
