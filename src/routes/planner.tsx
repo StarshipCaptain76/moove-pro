@@ -472,14 +472,19 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
         <GripVertical className="h-4 w-4" />
       </button>
       <Link to="/doc/$id" params={{ id: doc.id }} className={cn("flex-1 flex items-center justify-between py-2 pr-3 gap-2", c.card)}>
-        <div className="min-w-0 flex-1">
-          <div className="font-semibold text-sm truncate">{doc.customer.name || "—"}</div>
-          <div className="text-[11px] text-muted-foreground truncate">{doc.number} · {doc.fromAddress || "no address"}</div>
-          <div className="text-[11px] font-medium truncate">{jobSummary(doc)}</div>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="text-sm font-mono font-semibold">{fmtMoney(t.total, currency)}</div>
-          <PaymentIndicator doc={doc} />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="font-semibold text-sm truncate flex items-center gap-1.5">
+            <span className="truncate">{doc.customer.name || "—"}</span>
+            <PaymentIndicator doc={doc} />
+          </div>
+          <div className="text-[11px] text-muted-foreground truncate">{doc.number}{doc.fromAddress ? ` - ${doc.fromAddress}` : ""}</div>
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <div className="text-[11px] font-semibold uppercase truncate min-w-0">{c.label}</div>
+            <div className="text-[11px] font-semibold tabular-nums shrink-0 text-right">{fmtMoney(t.total, currency)}</div>
+          </div>
+          {jobMaterialCategory(doc) === "other" && doc.notes && (
+            <div className="text-[11px] opacity-80 line-clamp-2 whitespace-pre-wrap">{doc.notes}</div>
+          )}
         </div>
       </Link>
     </div>
