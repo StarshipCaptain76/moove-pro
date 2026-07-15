@@ -183,6 +183,13 @@ export async function generatePdf(
     pdf.text(doc.notes, M, y + 46);
   }
 
+  // subtle footer
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(120, 120, 120);
+  pdf.text("Powered by KWOUT.co.za", W / 2, 289, { align: "center" });
+  pdf.setTextColor(20, 20, 20);
+
   pdf.setFillColor(...RED);
   pdf.rect(0, 293, W, 4, "F");
 
