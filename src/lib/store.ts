@@ -84,6 +84,7 @@ export interface Doc {
   status: DocStatus;
   createdAt: string;
   scheduledDate?: string; // ISO date (yyyy-mm-dd)
+  scheduledEndDate?: string; // ISO date; when set, job spans scheduledDate..scheduledEndDate inclusive
   dayOrder?: number;
   archived?: boolean;
   customer: Customer;
