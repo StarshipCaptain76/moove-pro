@@ -106,7 +106,7 @@ function PlannerPage() {
   // Paid docs without a scheduled date are historical / closed jobs — don't
   // surface them as "unscheduled". Only accepted jobs still need scheduling.
   const unscheduled = jobs.filter(
-    (d) => !d.archived && !d.scheduledDate && (d.status === "accepted" || d.type === "invoice"),
+    (d) => !d.archived && !d.scheduledDate && d.status !== "paid" && (d.status === "accepted" || d.type === "invoice"),
   );
 
   const onDragEnd = (e: DragEndEvent) => {
