@@ -570,24 +570,21 @@ function JobCard({ doc, currency, vat }: { doc: Doc; currency: string; vat: numb
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const t = docTotals(doc, vat);
   const c = MATERIALS[jobMaterialCategory(doc)];
+  const invoiceAddress = `${doc.number}${doc.fromAddress ? ` - ${doc.fromAddress}` : ""}`;
   const open = usePlannerActions();
   const lp = useLongPress(() => open(doc));
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
-      className={cn("rounded p-2 text-xs cursor-grab border-l-4 min-w-0", c.card, c.border, isDragging && "opacity-50")}>
+      className={cn("rounded p-2 text-xs cursor-grab border-l-4 min-w-0 space-y-0.5", c.card, c.border, isDragging && "opacity-50")}>
       <div className="font-semibold truncate">{doc.customer.name || "—"}</div>
-      <div className="opacity-80 truncate">{doc.fromAddress || "no address"}</div>
+      <div className="opacity-80 truncate">{invoiceAddress}</div>
       <div className="flex items-center justify-between gap-2 min-w-0">
-        <div className="opacity-80 truncate min-w-0">{jobSummary(doc)}</div>
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="opacity-80 tabular-nums">{fmtMoney(t.total, currency)}</span>
-          <PaymentIndicator doc={doc} />
-        </div>
+        <div className="font-semibold uppercase truncate min-w-0">{c.label}</div>
+        <div className="font-semibold tabular-nums shrink-0 text-right">{fmtMoney(t.total, currency)}</div>
       </div>
       {jobMaterialCategory(doc) === "other" && doc.notes && (
         <div className="opacity-80 line-clamp-2 whitespace-pre-wrap mt-0.5">{doc.notes}</div>
       )}
-      <Link to="/doc/$id" params={{ id: doc.id }} className="text-primary underline text-[10px]">open</Link>
     </div>
   );
 }
