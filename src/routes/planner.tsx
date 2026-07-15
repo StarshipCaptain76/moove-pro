@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useStore, docTotals, fmtMoney, type Doc, type PayMethod } from "@/lib/store";
 import {
-  addDays, addMonths, endOfMonth, endOfWeek, format, isSameMonth, isToday, isTomorrow,
+  addDays, addMonths, endOfMonth, endOfWeek, format, isSameMonth, isToday, isTomorrow, parseISO,
   startOfMonth, startOfWeek,
 } from "date-fns";
 import { useMemo, useState, useRef, useCallback } from "react";
@@ -73,6 +73,14 @@ const paidDate = (doc: Doc) => {
   return format(new Date(doc.paidAt), "yyyy-MM-dd");
 };
 const plannerDate = (doc: Doc) => doc.scheduledDate || paidDate(doc);
+// A job covers this ISO day if it's the planner date, or the day falls within
+// [scheduledDate, scheduledEndDate] for multi-day jobs.
+const coversDay = (doc: Doc, iso: string) => {
+  const start = doc.scheduledDate;
+  const end = doc.scheduledEndDate;
+  if (start && end && end >= start) return iso >= start && iso <= end;
+  return plannerDate(doc) === iso;
+};
 
 type View = "agenda" | "week" | "month";
 
@@ -102,7 +110,7 @@ function PlannerPage() {
     [docs],
   );
   const byDay = (iso: string) =>
-    jobs.filter((d) => plannerDate(d) === iso).sort((a, b) => (a.dayOrder ?? 0) - (b.dayOrder ?? 0));
+    jobs.filter((d) => coversDay(d, iso)).sort((a, b) => (a.dayOrder ?? 0) - (b.dayOrder ?? 0));
   // Paid docs without a scheduled date are historical / closed jobs — don't
   // surface them as "unscheduled". Only accepted jobs still need scheduling.
   const unscheduled = jobs.filter(
@@ -115,8 +123,19 @@ function PlannerPage() {
     if (!overId) return;
     const doc = jobs.find((d) => d.id === id);
     if (!doc) return;
-    if (overId === "unscheduled") upsertDoc({ ...doc, scheduledDate: undefined });
-    else upsertDoc({ ...doc, scheduledDate: overId, dayOrder: byDay(overId).length });
+    if (overId === "unscheduled") {
+      upsertDoc({ ...doc, scheduledDate: undefined, scheduledEndDate: undefined });
+    } else {
+      // Preserve multi-day span: shift end date by the same delta as start.
+      let newEnd: string | undefined = doc.scheduledEndDate;
+      if (doc.scheduledDate && doc.scheduledEndDate) {
+        const start = parseISO(doc.scheduledDate);
+        const end = parseISO(doc.scheduledEndDate);
+        const spanDays = Math.max(0, Math.round((end.getTime() - start.getTime()) / 86400000));
+        newEnd = format(addDays(parseISO(overId), spanDays), "yyyy-MM-dd");
+      }
+      upsertDoc({ ...doc, scheduledDate: overId, scheduledEndDate: newEnd, dayOrder: byDay(overId).length });
+    }
   };
 
   // Agenda: next 30 days that have jobs, plus today

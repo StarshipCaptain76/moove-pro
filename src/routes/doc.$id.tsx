@@ -325,6 +325,31 @@ function DocPage() {
           <Card className="p-4">
             <Label className="flex items-center gap-1 mb-1"><CalendarIcon className="h-3.5 w-3.5" /> Scheduled date</Label>
             <DatePicker value={doc.scheduledDate} onChange={(iso) => update({ scheduledDate: iso })} clearable />
+            <label className="flex items-center gap-2 mt-3 text-sm">
+              <input
+                type="checkbox"
+                checked={!!doc.scheduledEndDate}
+                disabled={!doc.scheduledDate}
+                onChange={(e) =>
+                  update({
+                    scheduledEndDate: e.target.checked
+                      ? doc.scheduledEndDate ?? doc.scheduledDate
+                      : undefined,
+                  })
+                }
+              />
+              Multi-day job
+            </label>
+            {doc.scheduledEndDate && (
+              <div className="mt-2">
+                <Label className="flex items-center gap-1 mb-1"><CalendarIcon className="h-3.5 w-3.5" /> End date</Label>
+                <DatePicker
+                  value={doc.scheduledEndDate}
+                  onChange={(iso) => update({ scheduledEndDate: iso })}
+                  clearable
+                />
+              </div>
+            )}
           </Card>
 
           <Card className="p-4 space-y-2">
