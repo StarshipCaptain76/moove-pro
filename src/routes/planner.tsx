@@ -81,6 +81,18 @@ const coversDay = (doc: Doc, iso: string) => {
   if (start && end && end >= start) return iso >= start && iso <= end;
   return plannerDate(doc) === iso;
 };
+// For multi-day jobs, return where `iso` falls within the span.
+const spanInfo = (doc: Doc, iso?: string) => {
+  if (!iso || !doc.scheduledDate || !doc.scheduledEndDate) return null;
+  if (doc.scheduledEndDate <= doc.scheduledDate) return null;
+  const start = parseISO(doc.scheduledDate);
+  const end = parseISO(doc.scheduledEndDate);
+  const cur = parseISO(iso);
+  const total = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+  const idx = Math.round((cur.getTime() - start.getTime()) / 86400000) + 1;
+  if (idx < 1 || idx > total) return null;
+  return { idx, total, isFirst: idx === 1, isLast: idx === total };
+};
 
 type View = "agenda" | "week" | "month";
 
