@@ -9,7 +9,7 @@ import {
 } from "date-fns";
 import { useMemo, useState, useRef, useCallback } from "react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { ChevronLeft, ChevronRight, ChevronDown, GripVertical, Check, X, CalendarDays, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, GripVertical, Check, X, CalendarDays, ExternalLink, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DatePicker } from "@/components/app/DatePicker";
@@ -80,6 +80,18 @@ const coversDay = (doc: Doc, iso: string) => {
   const end = doc.scheduledEndDate;
   if (start && end && end >= start) return iso >= start && iso <= end;
   return plannerDate(doc) === iso;
+};
+// For multi-day jobs, return where `iso` falls within the span.
+const spanInfo = (doc: Doc, iso?: string) => {
+  if (!iso || !doc.scheduledDate || !doc.scheduledEndDate) return null;
+  if (doc.scheduledEndDate <= doc.scheduledDate) return null;
+  const start = parseISO(doc.scheduledDate);
+  const end = parseISO(doc.scheduledEndDate);
+  const cur = parseISO(iso);
+  const total = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+  const idx = Math.round((cur.getTime() - start.getTime()) / 86400000) + 1;
+  if (idx < 1 || idx > total) return null;
+  return { idx, total, isFirst: idx === 1, isLast: idx === total };
 };
 
 type View = "agenda" | "week" | "month";
@@ -468,24 +480,27 @@ function AgendaDay({ date, iso, docs, currency, vat }: { date: Date; iso: string
         {docs.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-2">No jobs</p>
         ) : (
-          docs.map((d) => <AgendaJob key={d.id} doc={d} currency={currency} vat={vat} />)
+          docs.map((d) => <AgendaJob key={d.id} doc={d} iso={iso} currency={currency} vat={vat} />)
         )}
       </div>
     </div>
   );
 }
 
-function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: number }) {
+function AgendaJob({ doc, iso, currency, vat }: { doc: Doc; iso?: string; currency: string; vat: number }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: doc.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const t = docTotals(doc, vat);
   const c = MATERIALS[jobMaterialCategory(doc)];
   const open = usePlannerActions();
   const lp = useLongPress(() => open(doc));
+  const span = spanInfo(doc, iso);
   return (
     <div ref={setNodeRef} style={style} className={cn(
       "flex items-stretch rounded-lg border-l-4 bg-background border overflow-hidden",
       c.border, isDragging && "opacity-50",
+      span && !span.isFirst && "rounded-l-none border-l-4 border-dashed",
+      span && !span.isLast && "rounded-r-none",
     )} {...lp}>
       <button {...listeners} {...attributes} className="px-2 flex items-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing shrink-0">
         <GripVertical className="h-4 w-4" />
@@ -495,6 +510,12 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
           <div className="font-semibold text-sm truncate flex items-center gap-1.5">
             <span className="truncate">{doc.customer.name || "—"}</span>
             <PaymentIndicator doc={doc} />
+            {span && (
+              <span className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-full border border-current/30 bg-background/60 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide">
+                <Link2 className="h-3 w-3" />
+                Day {span.idx}/{span.total}
+              </span>
+            )}
           </div>
           <div className="text-[11px] text-muted-foreground truncate">{doc.number}{doc.fromAddress ? ` - ${doc.fromAddress}` : ""}</div>
           <div className="flex items-center justify-between gap-2 min-w-0">
@@ -544,7 +565,7 @@ function DayCol({ date, iso, docs, currency, vat }: { date: Date; iso: string; d
         {docs.length === 0 ? (
           <p className="text-[11px] text-muted-foreground text-center py-1.5 md:py-3">—</p>
         ) : (
-          docs.map((d) => <JobCard key={d.id} doc={d} currency={currency} vat={vat} />)
+          docs.map((d) => <JobCard key={d.id} doc={d} iso={iso} currency={currency} vat={vat} />)
         )}
       </div>
     </div>
@@ -563,33 +584,41 @@ function MonthCell({ date, iso, inMonth, docs }: { date: Date; iso: string; inMo
     )}>
       <div className={cn("font-display text-sm sm:text-lg leading-none mb-1", today && "text-primary")}>{format(date, "d")}</div>
       <div className="space-y-0.5">
-        {docs.slice(0, 3).map((d) => <MiniJob key={d.id} doc={d} />)}
+        {docs.slice(0, 3).map((d) => <MiniJob key={d.id} doc={d} iso={iso} />)}
         {docs.length > 3 && <div className="text-[9px] text-muted-foreground">+{docs.length - 3}</div>}
       </div>
     </div>
   );
 }
 
-function MiniJob({ doc }: { doc: Doc }) {
+function MiniJob({ doc, iso }: { doc: Doc; iso?: string }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: doc.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const c = MATERIALS[jobMaterialCategory(doc)];
   const open = usePlannerActions();
   const lp = useLongPress(() => open(doc));
+  const span = spanInfo(doc, iso);
   return (
     <Link to="/doc/$id" params={{ id: doc.id }}>
       <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
-        className={cn("rounded px-1 py-0.5 truncate border-l-2 cursor-grab text-[10px] flex items-center gap-1", c.card, c.border, isDragging && "opacity-50")}
-        title={`${doc.customer.name || "—"} · ${doc.number} · ${jobSummary(doc)}`}>
+        className={cn(
+          "rounded px-1 py-0.5 truncate border-l-2 cursor-grab text-[10px] flex items-center gap-1",
+          c.card, c.border, isDragging && "opacity-50",
+          span && !span.isFirst && "rounded-l-none border-l-0 border-dashed",
+          span && !span.isLast && "rounded-r-none",
+        )}
+        title={`${doc.customer.name || "—"} · ${doc.number}${span ? ` · Day ${span.idx} of ${span.total}` : ""} · ${jobSummary(doc)}`}>
         <PaymentIndicator doc={doc} />
+        {span && <Link2 className="h-2.5 w-2.5 shrink-0 opacity-70" />}
         {doc.customer.name || doc.number}
+        {span && <span className="ml-auto shrink-0 opacity-70 tabular-nums">{span.idx}/{span.total}</span>}
       </div>
     </Link>
   );
 
 }
 
-function JobCard({ doc, currency, vat }: { doc: Doc; currency: string; vat: number }) {
+function JobCard({ doc, iso, currency, vat }: { doc: Doc; iso?: string; currency: string; vat: number }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: doc.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const t = docTotals(doc, vat);
@@ -597,10 +626,24 @@ function JobCard({ doc, currency, vat }: { doc: Doc; currency: string; vat: numb
   const invoiceAddress = `${doc.number}${doc.fromAddress ? ` - ${doc.fromAddress}` : ""}`;
   const open = usePlannerActions();
   const lp = useLongPress(() => open(doc));
+  const span = spanInfo(doc, iso);
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
-      className={cn("rounded p-2 text-xs cursor-grab border-l-4 min-w-0 space-y-0.5", c.card, c.border, isDragging && "opacity-50")}>
-      <div className="font-semibold truncate">{doc.customer.name || "—"}</div>
+      className={cn(
+        "rounded p-2 text-xs cursor-grab border-l-4 min-w-0 space-y-0.5",
+        c.card, c.border, isDragging && "opacity-50",
+        span && !span.isFirst && "rounded-l-none border-l-4 border-dashed",
+        span && !span.isLast && "rounded-r-none",
+      )}>
+      <div className="font-semibold truncate flex items-center gap-1.5">
+        <span className="truncate">{doc.customer.name || "—"}</span>
+        {span && (
+          <span className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-full border border-current/30 bg-background/60 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide">
+            <Link2 className="h-3 w-3" />
+            Day {span.idx}/{span.total}
+          </span>
+        )}
+      </div>
       <div className="opacity-80 truncate">{invoiceAddress}</div>
       <div className="flex items-center justify-between gap-2 min-w-0">
         <div className="font-semibold uppercase truncate min-w-0">{c.label}</div>
