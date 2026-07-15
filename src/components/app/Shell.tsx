@@ -25,7 +25,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
     <div className="min-h-[100svh] bg-background text-foreground">
-      <header className="sticky top-0 z-40 bg-secondary text-secondary-foreground border-b-4 border-primary">
+      <header className="sticky top-0 z-40 bg-secondary text-secondary-foreground border-b-4 border-primary pt-[env(safe-area-inset-top)]">
         <div className="max-w-6xl mx-auto px-3 sm:px-4 flex items-center gap-3 h-14 sm:h-16">
           <Link to="/" className="flex items-center gap-2 min-w-0">
             <img src={logoAsset.url} alt="MOOVE" className="h-8 sm:h-10 w-auto bg-white rounded p-1" />
