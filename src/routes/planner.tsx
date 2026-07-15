@@ -89,12 +89,25 @@ function PlannerPage() {
   const [moveMode, setMoveMode] = useState(false);
   const openActions = (d: Doc) => { setActionDoc(d); setMoveMode(false); };
 
-  const jobs = useMemo(() => docs.filter((d) => d.status === "accepted" || d.status === "paid"), [docs]);
+  // Show accepted/paid jobs, plus any invoice that isn't cancelled — a draft
+  // or sent invoice scheduled for a day is still real work on the calendar.
+  const jobs = useMemo(
+    () =>
+      docs.filter(
+        (d) =>
+          d.status === "accepted" ||
+          d.status === "paid" ||
+          (d.type === "invoice" && d.status !== "cancelled"),
+      ),
+    [docs],
+  );
   const byDay = (iso: string) =>
     jobs.filter((d) => plannerDate(d) === iso).sort((a, b) => (a.dayOrder ?? 0) - (b.dayOrder ?? 0));
   // Paid docs without a scheduled date are historical / closed jobs — don't
   // surface them as "unscheduled". Only accepted jobs still need scheduling.
-  const unscheduled = jobs.filter((d) => !d.scheduledDate && d.status === "accepted");
+  const unscheduled = jobs.filter(
+    (d) => !d.scheduledDate && (d.status === "accepted" || d.type === "invoice"),
+  );
 
   const onDragEnd = (e: DragEndEvent) => {
     const id = String(e.active.id);
