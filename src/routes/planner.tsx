@@ -32,7 +32,7 @@ const MATERIALS: Record<MaterialKey, { label: string; dot: string; card: string;
   garden:    { label: "Garden",     dot: "bg-emerald-500", card: "bg-emerald-500/10", border: "border-emerald-500" },
   sandstone: { label: "Sand/Stone", dot: "bg-yellow-500",  card: "bg-yellow-500/10",  border: "border-yellow-500" },
   grass:     { label: "Grass",      dot: "bg-lime-500",    card: "bg-lime-500/10",    border: "border-lime-500" },
-  other:     { label: "Other",      dot: "bg-slate-400",   card: "bg-secondary",      border: "border-slate-400" },
+  other:     { label: "Other",      dot: "bg-sky-500",     card: "bg-sky-500/10",     border: "border-sky-500" },
 };
 
 function jobMaterialCategory(doc: Doc): MaterialKey {
