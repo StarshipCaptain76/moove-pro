@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useStore, docTotals, fmtMoney, type Doc, type PayMethod } from "@/lib/store";
 import {
-  addDays, addMonths, endOfMonth, endOfWeek, format, isSameMonth, isToday, isTomorrow,
+  addDays, addMonths, endOfMonth, endOfWeek, format, isSameMonth, isToday, isTomorrow, parseISO,
   startOfMonth, startOfWeek,
 } from "date-fns";
 import { useMemo, useState, useRef, useCallback } from "react";
