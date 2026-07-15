@@ -480,24 +480,27 @@ function AgendaDay({ date, iso, docs, currency, vat }: { date: Date; iso: string
         {docs.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-2">No jobs</p>
         ) : (
-          docs.map((d) => <AgendaJob key={d.id} doc={d} currency={currency} vat={vat} />)
+          docs.map((d) => <AgendaJob key={d.id} doc={d} iso={iso} currency={currency} vat={vat} />)
         )}
       </div>
     </div>
   );
 }
 
-function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: number }) {
+function AgendaJob({ doc, iso, currency, vat }: { doc: Doc; iso?: string; currency: string; vat: number }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: doc.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const t = docTotals(doc, vat);
   const c = MATERIALS[jobMaterialCategory(doc)];
   const open = usePlannerActions();
   const lp = useLongPress(() => open(doc));
+  const span = spanInfo(doc, iso);
   return (
     <div ref={setNodeRef} style={style} className={cn(
       "flex items-stretch rounded-lg border-l-4 bg-background border overflow-hidden",
       c.border, isDragging && "opacity-50",
+      span && !span.isFirst && "rounded-l-none border-l-4 border-dashed",
+      span && !span.isLast && "rounded-r-none",
     )} {...lp}>
       <button {...listeners} {...attributes} className="px-2 flex items-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing shrink-0">
         <GripVertical className="h-4 w-4" />
@@ -507,6 +510,12 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
           <div className="font-semibold text-sm truncate flex items-center gap-1.5">
             <span className="truncate">{doc.customer.name || "—"}</span>
             <PaymentIndicator doc={doc} />
+            {span && (
+              <span className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-full border border-current/30 bg-background/60 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide">
+                <Link2 className="h-3 w-3" />
+                Day {span.idx}/{span.total}
+              </span>
+            )}
           </div>
           <div className="text-[11px] text-muted-foreground truncate">{doc.number}{doc.fromAddress ? ` - ${doc.fromAddress}` : ""}</div>
           <div className="flex items-center justify-between gap-2 min-w-0">
