@@ -329,10 +329,13 @@ export const useStore = create<State>()(
         const s = get();
         const existingExp = new Set(s.expenses.map((e) => e.id));
         const existingDoc = new Set(s.docs.map((d) => d.id));
-        const newExp = p.expenses.filter((e) => !existingExp.has(e.id));
+        const catSet = new Set(s.expenseCategories);
+        const newExp = p.expenses
+          .filter((e) => !existingExp.has(e.id))
+          // Never mutate the user's category list on import — remap unknown
+          // categories to "Other" so imports don't silently create dupes.
+          .map((e) => (catSet.has(e.category) ? e : { ...e, category: "Other" }));
         const newDocs = p.docs.filter((d) => !existingDoc.has(d.id));
-        const catNames = new Set(s.expenseCategories);
-        for (const c of p.newExpenseCategories) catNames.add(c);
         const catalogNames = new Set(s.catalog.map((c) => c.name.toLowerCase()));
         const addedCatalog = p.newCatalogItems.filter(
           (c) => !catalogNames.has(c.name.toLowerCase()),
@@ -340,7 +343,6 @@ export const useStore = create<State>()(
         set({
           expenses: [...newExp, ...s.expenses],
           docs: [...newDocs, ...s.docs],
-          expenseCategories: Array.from(catNames),
           catalog: [...s.catalog, ...addedCatalog],
           billing: {
             ...s.billing,
@@ -349,7 +351,6 @@ export const useStore = create<State>()(
         });
         newExp.forEach(pushExpense);
         newDocs.forEach(pushDoc);
-        p.newExpenseCategories.forEach(pushExpenseCategory);
         addedCatalog.forEach(pushCatalogItem);
         pushCompanyProfile();
         return { expenses: newExp.length, docs: newDocs.length };

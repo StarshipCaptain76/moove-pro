@@ -1,28 +1,40 @@
-## Show historical imported jobs on the planner
+## Root cause
 
-### Problem
+Expense categories are being mutated implicitly by the **Import historical / Import bank** buttons on Settings, not by explicit edits.
 
-The 49 imported bank docs are `status: "paid"`, `archived: true`, `paidAt: "2026-05-02"` etc., with no `scheduledDate`. In `src/routes/planner.tsx`, `paidDate(doc)` currently returns `undefined` when a doc is archived and its paid date isn't today, so archived historical jobs never appear on the calendar in any view.
+- `importHistorical` in `src/lib/store.ts` (line 328) calls
+  `for (const c of p.newExpenseCategories) catNames.add(c)` and then
+  `p.newExpenseCategories.forEach(pushExpenseCategory)`.
+- The historical JSON injects `"Bank Fees"` and `"Insurance"`; the bank-import JSON injects `"Bank Charges"`. These land alongside the defaults, so the user ends up with near-duplicates like **Bank Fees** vs **Bank Charges**.
+- Nothing else writes to `expenseCategories` outside of the explicit `addExpenseCategory` / `renameExpenseCategory` / `deleteExpenseCategory` actions. Receipt AI parsing and sync merges are already constrained to the existing list.
+- Confirmed against the cloud DB: 17 rows, no true duplicates — the 3 extras are all from imports.
 
-### Change
+## Fix
 
-In `src/routes/planner.tsx`, relax `paidDate()` so any paid doc with a `paidAt` is placed on the calendar on its paid date, regardless of `archived`:
+**1. Stop imports from touching the category list**
+In `src/lib/store.ts` → `importHistorical`:
+- Remove the `catNames.add(...)` loop and drop `expenseCategories` from the returned `set(...)` payload.
+- Remove the `p.newExpenseCategories.forEach(pushExpenseCategory)` push.
+- For any imported expense whose `category` is not already in the user's current list, remap it to `"Other"` before insert, so the pie/legend stay consistent.
 
-```ts
-const paidDate = (doc: Doc) => {
-  if (doc.status !== "paid" || !doc.paidAt) return undefined;
-  return format(new Date(doc.paidAt), "yyyy-MM-dd");
-};
-```
+Result: importing (or re-importing) historical/bank data never adds, renames, or removes categories. Only the three explicit user actions do.
 
-Effect: historical imported jobs (and any future archived-after-paid jobs) show up on their paid date in Agenda, Week, and Month views. They remain paid (green dot indicator) and open the job when tapped.
+**2. Clean up the 3 orphan categories already created**
+Add a one-shot migration in `initSync` (runs once per signed-in user, tracked via a `localStorage` flag like `moove:categories-pruned-v1`):
+- For each of `"Bank Charges"`, `"Bank Fees"`, `"Insurance"`: if present in the user's `expenseCategories`, remap linked expenses to `"Other"` and delete the category via the existing `deleteExpenseCategory` action (which also removes the cloud row).
 
-### Side effects
+If the user actually wants any of these three kept, they can re-add them via Settings → Categories after the cleanup. Alternative: skip the auto-cleanup and let the user remove them manually in Settings — happy to do that instead.
 
-- Agenda view shows days with historical jobs across the full 60-day window from the anchor. Since a user can now swipe backwards (previous plan), they can browse into May 2026 and see the imported history.
-- Unscheduled pill logic is unchanged (only affects `accepted` jobs).
-- No DB changes, no store changes.
+**3. No changes required to**
+- `sync.ts` `loadAll` (cloud is already the source of truth on sign-in).
+- `expenses.functions.ts` (already picks only from allowed list).
+- Settings category editor (already case-insensitive dedupe on add).
 
-### File
+## Files touched
 
-- `src/routes/planner.tsx` — single-function edit to `paidDate`.
+- `src/lib/store.ts` — trim `importHistorical`; add one-shot cleanup helper.
+- `src/lib/sync.ts` — call the one-shot cleanup once per user after `loadAll`.
+
+## Open question
+
+Do you want step 2 (auto-remove the 3 orphan categories and remap their expenses to "Other") — or leave them and just prevent future imports from ever adding categories, so you can delete the extras yourself in Settings?
