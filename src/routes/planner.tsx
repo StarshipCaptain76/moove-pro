@@ -123,8 +123,19 @@ function PlannerPage() {
     if (!overId) return;
     const doc = jobs.find((d) => d.id === id);
     if (!doc) return;
-    if (overId === "unscheduled") upsertDoc({ ...doc, scheduledDate: undefined });
-    else upsertDoc({ ...doc, scheduledDate: overId, dayOrder: byDay(overId).length });
+    if (overId === "unscheduled") {
+      upsertDoc({ ...doc, scheduledDate: undefined, scheduledEndDate: undefined });
+    } else {
+      // Preserve multi-day span: shift end date by the same delta as start.
+      let newEnd: string | undefined = doc.scheduledEndDate;
+      if (doc.scheduledDate && doc.scheduledEndDate) {
+        const start = parseISO(doc.scheduledDate);
+        const end = parseISO(doc.scheduledEndDate);
+        const spanDays = Math.max(0, Math.round((end.getTime() - start.getTime()) / 86400000));
+        newEnd = format(addDays(parseISO(overId), spanDays), "yyyy-MM-dd");
+      }
+      upsertDoc({ ...doc, scheduledDate: overId, scheduledEndDate: newEnd, dayOrder: byDay(overId).length });
+    }
   };
 
   // Agenda: next 30 days that have jobs, plus today
