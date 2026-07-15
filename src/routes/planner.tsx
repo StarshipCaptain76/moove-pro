@@ -73,6 +73,14 @@ const paidDate = (doc: Doc) => {
   return format(new Date(doc.paidAt), "yyyy-MM-dd");
 };
 const plannerDate = (doc: Doc) => doc.scheduledDate || paidDate(doc);
+// A job covers this ISO day if it's the planner date, or the day falls within
+// [scheduledDate, scheduledEndDate] for multi-day jobs.
+const coversDay = (doc: Doc, iso: string) => {
+  const start = doc.scheduledDate;
+  const end = doc.scheduledEndDate;
+  if (start && end && end >= start) return iso >= start && iso <= end;
+  return plannerDate(doc) === iso;
+};
 
 type View = "agenda" | "week" | "month";
 
@@ -102,7 +110,7 @@ function PlannerPage() {
     [docs],
   );
   const byDay = (iso: string) =>
-    jobs.filter((d) => plannerDate(d) === iso).sort((a, b) => (a.dayOrder ?? 0) - (b.dayOrder ?? 0));
+    jobs.filter((d) => coversDay(d, iso)).sort((a, b) => (a.dayOrder ?? 0) - (b.dayOrder ?? 0));
   // Paid docs without a scheduled date are historical / closed jobs — don't
   // surface them as "unscheduled". Only accepted jobs still need scheduling.
   const unscheduled = jobs.filter(
