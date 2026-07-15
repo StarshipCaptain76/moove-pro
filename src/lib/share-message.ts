@@ -15,6 +15,14 @@ export function buildShareMessage(
   lines.push("");
   lines.push(`Here is your ${kind} ${doc.number} from ${company.name}.`);
 
+  if (doc.fromAddress || doc.toAddress) {
+    lines.push("");
+    lines.push("Route:");
+    if (doc.fromAddress) lines.push(`From: ${doc.fromAddress}`);
+    if (doc.toAddress) lines.push(`To: ${doc.toAddress}`);
+    if (doc.distanceKm) lines.push(`Distance: ${doc.distanceKm} km`);
+  }
+
   if (doc.items.length) {
     lines.push("");
     lines.push("Items:");

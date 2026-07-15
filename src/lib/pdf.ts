@@ -70,6 +70,32 @@ export async function generatePdf(
   custLines.forEach((l, i) => pdf.text(l, W / 2, y + 5 + i * 4));
 
   y = 78;
+  // route block (from/to)
+  if (doc.fromAddress || doc.toAddress) {
+    pdf.setFillColor(245, 245, 245);
+    const routeH = doc.distanceKm ? 20 : 16;
+    pdf.rect(M, y, W - 2 * M, routeH, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8);
+    pdf.setTextColor(80, 80, 80);
+    pdf.text("FROM", M + 3, y + 5);
+    pdf.text("TO", W / 2, y + 5);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.setTextColor(20, 20, 20);
+    const fromLines = pdf.splitTextToSize(doc.fromAddress || "—", W / 2 - M - 6);
+    const toLines = pdf.splitTextToSize(doc.toAddress || "—", W / 2 - M - 6);
+    pdf.text(fromLines, M + 3, y + 10);
+    pdf.text(toLines, W / 2, y + 10);
+    if (doc.distanceKm) {
+      pdf.setFont("helvetica", "italic");
+      pdf.setFontSize(8);
+      pdf.setTextColor(80, 80, 80);
+      pdf.text(`Distance: ${doc.distanceKm} km`, M + 3, y + routeH - 2);
+      pdf.setTextColor(20, 20, 20);
+    }
+    y += routeH + 4;
+  }
   // items table
   pdf.setFillColor(20, 20, 20);
   pdf.rect(M, y, W - 2 * M, 8, "F");
