@@ -468,10 +468,10 @@ function AgendaJob({ doc, currency, vat }: { doc: Doc; currency: string; vat: nu
       "flex items-stretch rounded-lg border-l-4 bg-background border overflow-hidden",
       c.border, isDragging && "opacity-50",
     )} {...lp}>
-      <button {...listeners} {...attributes} className="px-2 flex items-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing">
+      <button {...listeners} {...attributes} className="px-2 flex items-center text-muted-foreground touch-none cursor-grab active:cursor-grabbing shrink-0">
         <GripVertical className="h-4 w-4" />
       </button>
-      <Link to="/doc/$id" params={{ id: doc.id }} className={cn("flex-1 flex items-center justify-between py-2 pr-3 gap-2", c.card)}>
+      <Link to="/doc/$id" params={{ id: doc.id }} className={cn("flex-1 min-w-0 flex items-center justify-between py-2 pr-3 gap-2", c.card)}>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="font-semibold text-sm truncate flex items-center gap-1.5">
             <span className="truncate">{doc.customer.name || "—"}</span>
