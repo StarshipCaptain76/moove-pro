@@ -490,36 +490,10 @@ async function loadAll() {
     // Seed defaults for a brand-new user.
     if (!profileRes.data) pushCompanyProfile();
     if (!categoryRows.length) DEFAULT_EXPENSE_CATEGORIES.forEach(pushExpenseCategory);
-
-    // One-shot cleanup: remove categories that were silently created by the
-    // historical / bank imports before they were made read-only. Remaps any
-    // linked expenses to "Other" and deletes the cloud row.
-    pruneImportOrphanCategories();
   } finally {
     state.loading = false;
     state.status = runningTask();
     emit();
-  }
-}
-
-const ORPHAN_CATEGORIES = ["Bank Charges", "Bank Fees", "Insurance"];
-const PRUNE_FLAG = "moove:categories-pruned-v1";
-
-function pruneImportOrphanCategories() {
-  if (typeof window === "undefined") return;
-  try {
-    if (window.localStorage.getItem(PRUNE_FLAG)) return;
-  } catch {
-    return;
-  }
-  const { expenseCategories, deleteExpenseCategory } = useStore.getState();
-  for (const name of ORPHAN_CATEGORIES) {
-    if (expenseCategories.includes(name)) deleteExpenseCategory(name);
-  }
-  try {
-    window.localStorage.setItem(PRUNE_FLAG, "1");
-  } catch {
-    /* ignore */
   }
 }
 
