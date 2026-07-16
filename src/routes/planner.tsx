@@ -628,31 +628,33 @@ function JobCard({ doc, iso, currency, vat }: { doc: Doc; iso?: string; currency
   const lp = useLongPress(() => open(doc));
   const span = spanInfo(doc, iso);
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
-      className={cn(
-        "rounded p-2 text-xs cursor-grab border-l-4 min-w-0 space-y-0.5",
-        c.card, c.border, isDragging && "opacity-50",
-        span && !span.isFirst && "rounded-l-none border-l-4 border-dashed",
-        span && !span.isLast && "rounded-r-none",
-      )}>
-      <div className="font-semibold truncate flex items-center gap-1.5">
-        <span className="truncate">{doc.customer.name || "—"}</span>
-        {span && (
-          <span className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-full border border-current/30 bg-background/60 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide">
-            <Link2 className="h-3 w-3" />
-            Day {span.idx}/{span.total}
-          </span>
+    <Link to="/doc/$id" params={{ id: doc.id }} className="block">
+      <div ref={setNodeRef} style={style} {...listeners} {...attributes} {...lp}
+        className={cn(
+          "rounded p-2 text-xs cursor-grab border-l-4 min-w-0 space-y-0.5",
+          c.card, c.border, isDragging && "opacity-50",
+          span && !span.isFirst && "rounded-l-none border-l-4 border-dashed",
+          span && !span.isLast && "rounded-r-none",
+        )}>
+        <div className="font-semibold truncate flex items-center gap-1.5">
+          <span className="truncate">{doc.customer.name || "—"}</span>
+          {span && (
+            <span className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-full border border-current/30 bg-background/60 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide">
+              <Link2 className="h-3 w-3" />
+              Day {span.idx}/{span.total}
+            </span>
+          )}
+        </div>
+        <div className="opacity-80 truncate">{invoiceAddress}</div>
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="font-semibold uppercase truncate min-w-0">{c.label}</div>
+          <div className="font-semibold tabular-nums shrink-0 text-right">{fmtMoney(t.total, currency)}</div>
+        </div>
+        {jobMaterialCategory(doc) === "other" && doc.notes && (
+          <div className="opacity-80 line-clamp-2 whitespace-pre-wrap mt-0.5">{doc.notes}</div>
         )}
       </div>
-      <div className="opacity-80 truncate">{invoiceAddress}</div>
-      <div className="flex items-center justify-between gap-2 min-w-0">
-        <div className="font-semibold uppercase truncate min-w-0">{c.label}</div>
-        <div className="font-semibold tabular-nums shrink-0 text-right">{fmtMoney(t.total, currency)}</div>
-      </div>
-      {jobMaterialCategory(doc) === "other" && doc.notes && (
-        <div className="opacity-80 line-clamp-2 whitespace-pre-wrap mt-0.5">{doc.notes}</div>
-      )}
-    </div>
+    </Link>
   );
 }
 
