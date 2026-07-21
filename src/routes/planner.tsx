@@ -12,6 +12,10 @@ import { DndContext, useDraggable, useDroppable, type DragEndEvent, PointerSenso
 import { ChevronLeft, ChevronRight, ChevronDown, GripVertical, Check, X, CalendarDays, ExternalLink, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { DatePicker } from "@/components/app/DatePicker";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -146,6 +150,7 @@ function PlannerPage() {
   const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()));
   const [agendaStart, setAgendaStart] = useState(() => new Date());
   const [showUnsched, setShowUnsched] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const [actionDoc, setActionDoc] = useState<Doc | null>(null);
   const [moveMode, setMoveMode] = useState(false);
