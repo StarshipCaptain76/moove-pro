@@ -295,6 +295,10 @@ function PlannerPage() {
         <div {...swipe} style={{ touchAction: "pan-y" }}>
         {view === "agenda" && (
           <div className="space-y-4">
+            <PlannerMap
+              jobs={buildMapJobs(jobs, agendaStart)}
+              onOpen={(id) => { const d = jobs.find((x) => x.id === id); if (d) openActions(d); }}
+            />
             {agendaDays.map((d) => {
               const iso = format(d, "yyyy-MM-dd");
               const dayJobs = byDay(iso);
