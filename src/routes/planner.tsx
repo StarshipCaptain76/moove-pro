@@ -383,11 +383,13 @@ function PlannerPage() {
 function useLongPress(onLongPress: () => void, ms = 500) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
+  const fired = useRef(false);
   const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     start.current = { x: e.clientX, y: e.clientY };
+    fired.current = false;
     clear();
-    timer.current = setTimeout(() => { onLongPress(); timer.current = null; }, ms);
+    timer.current = setTimeout(() => { fired.current = true; onLongPress(); timer.current = null; }, ms);
   }, [onLongPress, ms]);
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     if (!start.current || !timer.current) return;
@@ -395,7 +397,14 @@ function useLongPress(onLongPress: () => void, ms = 500) {
     const dy = e.clientY - start.current.y;
     if (dx * dx + dy * dy > 64) clear();
   }, []);
-  const onContextMenu = useCallback((e: React.MouseEvent) => { e.preventDefault(); onLongPress(); }, [onLongPress]);
+  const onContextMenu = useCallback((e: React.MouseEvent) => { e.preventDefault(); fired.current = true; onLongPress(); }, [onLongPress]);
+  const onClickCapture = useCallback((e: React.MouseEvent) => {
+    if (fired.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      fired.current = false;
+    }
+  }, []);
   return {
     onPointerDown,
     onPointerMove,
@@ -403,6 +412,7 @@ function useLongPress(onLongPress: () => void, ms = 500) {
     onPointerLeave: clear,
     onPointerCancel: clear,
     onContextMenu,
+    onClickCapture,
   };
 }
 
