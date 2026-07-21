@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { flushSync } from "@/lib/sync";
 import { createContext, useContext } from "react";
+import { PlannerMap, type PlannerMapJob } from "@/components/app/PlannerMap";
 
 const JobActionsCtx = createContext<((d: Doc) => void) | null>(null);
 function usePlannerActions() {
@@ -34,6 +35,47 @@ const MATERIALS: Record<MaterialKey, { label: string; dot: string; card: string;
   grass:     { label: "Grass",      dot: "bg-lime-500",    card: "bg-lime-500/10",    border: "border-lime-500" },
   other:     { label: "Other",      dot: "bg-sky-500",     card: "bg-sky-500/10",     border: "border-sky-500" },
 };
+
+const MATERIAL_HEX: Record<MaterialKey, string> = {
+  furniture: "#f59e0b",
+  rubble:    "#78716c",
+  garden:    "#10b981",
+  sandstone: "#eab308",
+  grass:     "#84cc16",
+  other:     "#0ea5e9",
+};
+
+function buildMapJobs(jobs: Doc[], from: Date): PlannerMapJob[] {
+  const days: string[] = [];
+  for (let i = 0; i < 7; i++) days.push(format(addDays(from, i), "yyyy-MM-dd"));
+  const seen = new Set<string>();
+  const out: PlannerMapJob[] = [];
+  for (const iso of days) {
+    for (const d of jobs) {
+      if (!coversDay(d, iso)) continue;
+      // one pin per job on its start day within the window
+      const startIso = d.scheduledDate || paidDate(d);
+      const showIso = (startIso && days.includes(startIso)) ? startIso : iso;
+      const key = d.id + ":" + showIso;
+      if (seen.has(d.id)) continue;
+      seen.add(d.id);
+      const cat = jobMaterialCategory(d);
+      out.push({
+        id: d.id,
+        date: showIso,
+        color: MATERIAL_HEX[cat],
+        category: MATERIALS[cat].label,
+        customer: d.customer?.name || "Job",
+        number: d.number,
+        fromAddress: d.fromAddress,
+        toAddress: d.toAddress,
+        fromCoords: d.fromCoords,
+        toCoords: d.toCoords,
+      });
+    }
+  }
+  return out;
+}
 
 function jobMaterialCategory(doc: Doc): MaterialKey {
   const text = doc.items.map((i) => i.description.toLowerCase()).join(" ");
@@ -285,6 +327,10 @@ function PlannerPage() {
         <div {...swipe} style={{ touchAction: "pan-y" }}>
         {view === "agenda" && (
           <div className="space-y-4">
+            <PlannerMap
+              jobs={buildMapJobs(jobs, agendaStart)}
+              onOpen={(id) => { const d = jobs.find((x) => x.id === id); if (d) openActions(d); }}
+            />
             {agendaDays.map((d) => {
               const iso = format(d, "yyyy-MM-dd");
               const dayJobs = byDay(iso);
