@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { flushSync } from "@/lib/sync";
 import { createContext, useContext } from "react";
+import { PlannerMap, type PlannerMapJob } from "@/components/app/PlannerMap";
 
 const JobActionsCtx = createContext<((d: Doc) => void) | null>(null);
 function usePlannerActions() {
@@ -33,6 +34,15 @@ const MATERIALS: Record<MaterialKey, { label: string; dot: string; card: string;
   sandstone: { label: "Sand/Stone", dot: "bg-yellow-500",  card: "bg-yellow-500/10",  border: "border-yellow-500" },
   grass:     { label: "Grass",      dot: "bg-lime-500",    card: "bg-lime-500/10",    border: "border-lime-500" },
   other:     { label: "Other",      dot: "bg-sky-500",     card: "bg-sky-500/10",     border: "border-sky-500" },
+};
+
+const MATERIAL_HEX: Record<MaterialKey, string> = {
+  furniture: "#f59e0b",
+  rubble:    "#78716c",
+  garden:    "#10b981",
+  sandstone: "#eab308",
+  grass:     "#84cc16",
+  other:     "#0ea5e9",
 };
 
 function jobMaterialCategory(doc: Doc): MaterialKey {
