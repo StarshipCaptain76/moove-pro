@@ -310,11 +310,7 @@ function PlannerPage() {
               <DropZone id="unscheduled" className="mt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!confirm(`Archive all ${unscheduled.length} unscheduled jobs? They will be hidden from the planner.`)) return;
-                    unscheduled.forEach((d) => upsertDoc({ ...d, archived: true }));
-                    void flushSync();
-                  }}
+                  onClick={() => setConfirmArchive(true)}
                   className="mb-2 w-full text-xs px-3 py-2 rounded-md border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20"
                 >
                   Archive all as historical
