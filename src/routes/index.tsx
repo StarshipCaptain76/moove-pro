@@ -8,6 +8,7 @@ import { format, differenceInCalendarDays } from "date-fns";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { bucketMatch, bucketLabel, bucketBadge, invoiceBuckets, quoteBuckets, type BucketKey } from "@/lib/doc-buckets";
 
 export const Route = createFileRoute("/")({ component: Index });
 
@@ -67,6 +68,11 @@ function Index() {
         <Stat label="Paid (month)" value={fmtMoney(stats.paidThisMonth, billing.currency)} />
         <Stat label="Quotes (month)" value={String(stats.quotes)} to="/docs" search={{ type: "quote" }} />
         <Stat label="Invoices (month)" value={String(stats.invoices)} to="/docs" search={{ type: "invoice" }} />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-4">
+        <StatusPanel title="Invoices" docs={docs} keys={invoiceBuckets} />
+        <StatusPanel title="Quotes" docs={docs} keys={quoteBuckets} />
       </div>
 
       <Card className="p-3 sm:p-4">
