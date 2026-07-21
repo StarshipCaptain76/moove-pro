@@ -377,6 +377,27 @@ function PlannerPage() {
         onCancel={cancelJob}
       />
      </JobActionsCtx.Provider>
+     <AlertDialog open={confirmArchive} onOpenChange={setConfirmArchive}>
+       <AlertDialogContent>
+         <AlertDialogHeader>
+           <AlertDialogTitle>Archive unscheduled jobs?</AlertDialogTitle>
+           <AlertDialogDescription>
+             Archive all {unscheduled.length} unscheduled job{unscheduled.length === 1 ? "" : "s"}? They will be hidden from the planner.
+           </AlertDialogDescription>
+         </AlertDialogHeader>
+         <AlertDialogFooter>
+           <AlertDialogCancel>Cancel</AlertDialogCancel>
+           <AlertDialogAction
+             onClick={() => {
+               unscheduled.forEach((d) => upsertDoc({ ...d, archived: true }));
+               void flushSync();
+             }}
+           >
+             Archive
+           </AlertDialogAction>
+         </AlertDialogFooter>
+       </AlertDialogContent>
+     </AlertDialog>
     </Shell>
   );
 }
