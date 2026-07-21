@@ -1,37 +1,53 @@
-## Goal
-Add a Google Maps panel to the Planner → Agenda tab showing scheduled jobs for the next 7 days, with color-coded pins by job category, pickup→drop-off route lines, and each pickup pin labeled with the scheduled date.
+## Home page: Invoices & Quotes status panels
 
-## Scope
-- Only affects the Agenda tab of `/planner`.
-- Uses the existing Google Maps browser key (`VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY`) already in `.env`.
-- Uses coordinates already stored on docs (`from.coords` / `to.coords` from `AddressAutocomplete`). Docs missing coords are silently skipped (address-only jobs won't appear on the map).
+Add two side-by-side cards to `/` (above the today/recent tabs) that mirror the reference: each row shows a status label with a colored count badge, and tapping a row opens `/docs` pre-filtered to that bucket.
 
-## Implementation
+### Layout
+```text
+┌─────────────────────┐  ┌───────────────────────────┐
+│ INVOICES            │  │ QUOTES                    │
+│  Draft            0 │  │  Draft                  0 │
+│  Unpaid           0 │  │  Awaiting acceptance    0 │
+│  Overdue          0 │  │  Accepted               0 │
+│  Paid             0 │  │  Declined               0 │
+└─────────────────────┘  └───────────────────────────┘
+```
+Two columns on mobile side-by-side (stacked below `sm` if too tight). Rows have divider lines. Count badge colors:
+- Draft → amber
+- Unpaid / Awaiting → blue
+- Overdue / Declined → red
+- Paid / Accepted → green
 
-1. **New component** `src/components/app/PlannerMap.tsx`
-   - Loads Maps JS API async via `<script>` injection with `loading=async&callback=...` (per house rules; no `AdvancedMarker`, no `mapId`).
-   - Props: `jobs: Array<{ id, date, category, customer, from?: {lat,lng,address}, to?: {lat,lng,address} }>`.
-   - Renders `google.maps.Map`, auto-fits bounds to all pins.
-   - For each job with `from.coords`:
-     - Pickup pin using `google.maps.Marker` with SVG icon colored by category (reuse the same palette as planner cards: Furniture/Rubble/Garden/Sand-Stone/Grass/Other), and a small date label (e.g. "Mon 14") via the marker `label` property.
-     - If `to.coords` exists: drop-off pin (same color, hollow/ring style to distinguish) + a `google.maps.Polyline` connecting pickup → drop-off in the same color.
-   - Click a pin → `InfoWindow` with customer, invoice #, date, address; clicking it navigates to `/doc/$id`.
-   - Height ~320px on mobile, 420px on desktop; rounded card matching existing UI.
+The four existing summary tiles (Outstanding, Paid month, Quotes month, Invoices month) stay above these panels — they show money/totals, the new panels show pipeline status counts.
 
-2. **Wire into Agenda view** in `src/routes/planner.tsx`
-   - Compute the next-7-days job list (jobs whose `plannerDate` or multi-day span falls within today..today+6, excluding cancelled/archived — reuse existing filters).
-   - Render `<PlannerMap jobs={next7} />` at the top of the Agenda tab, above the day list. Hidden on Week/Month tabs.
-   - Wrap in `<ClientOnly>` (Maps JS is browser-only).
+### Status rules (from clarifications)
 
-3. **Category color helper**
-   - Extract the existing planner category→color logic into a small exported helper (in `src/lib/utils.ts` or a new `src/lib/planner-colors.ts`) so the map and cards stay in sync. Returns hex codes (map SVG needs hex, not Tailwind classes).
+**Invoices**
+- Draft: `type=invoice`, `status=draft`
+- Unpaid: `type=invoice`, `status ∈ {sent, accepted}`, not paid, created ≤14 days ago
+- Overdue: `type=invoice`, unpaid, created >14 days ago
+- Paid: `type=invoice`, `status=paid`
+- (Sent to accounting tile skipped)
 
-## Technical notes
-- No server-side Maps calls needed — pickup/drop-off coords are already stored on docs; no geocoding required. Jobs without coords are skipped with a small "N of M jobs shown on map" caption.
-- Route lines are straight polylines between pickup and drop-off (not driving routes) to avoid per-render Routes API cost. Can upgrade to real driving routes later if desired.
-- Script loader is idempotent (checks `window.google?.maps` before injecting) so tab switches don't reload.
+**Quotes**
+- Draft: `type=quote`, `status=draft`, not archived
+- Awaiting acceptance: `type=quote`, `status=sent`, not archived
+- Accepted: `type=quote`, `status=accepted`
+- Declined: `type=quote`, `status ∈ {cancelled}` OR (draft/sent AND created >10 days ago). This absorbs the existing "auto-archive after 10 days" quotes so they show as Declined instead of silently disappearing.
 
-## Out of scope
-- Real driving-route polylines via Routes API (straight lines only).
-- Geocoding historical jobs that lack coords.
-- Map on Week/Month tabs.
+Archived quotes still appear under the existing "Show archived quotes" section unchanged.
+
+### Navigation
+
+Each row is a `<Link to="/docs">` with search params. Extend `/docs` (`src/routes/docs.tsx`) `validateSearch` to accept a `bucket` param:
+
+`bucket` ∈ `inv-draft | inv-unpaid | inv-overdue | inv-paid | quote-draft | quote-awaiting | quote-accepted | quote-declined`
+
+`docs.tsx` maps `bucket` to the same filter predicates used on the home page (shared helper in `src/lib/doc-buckets.ts`) so counts and list stay in sync. The page title reflects the bucket (e.g. "Overdue invoices", "Declined quotes"). Existing `type` / `status=unpaid` params keep working for the summary tiles above.
+
+### Files touched
+- `src/lib/doc-buckets.ts` — new shared predicates + labels + colors, single source of truth.
+- `src/routes/index.tsx` — render the two panels above the existing tabs card, sourcing counts from the shared helper.
+- `src/routes/docs.tsx` — accept `bucket` search param, apply matching predicate, set title.
+
+No schema or store changes — all buckets derive from existing fields (`type`, `status`, `createdAt`, `paidAt`, `archived`).
