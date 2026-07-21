@@ -5,27 +5,34 @@ import { useStore, docTotals, fmtMoney, type Doc } from "@/lib/store";
 import { ChevronRight, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { bucketMatch, bucketTitle, isBucketKey, type BucketKey } from "@/lib/doc-buckets";
 
 export const Route = createFileRoute("/docs")({
   component: DocsListPage,
   validateSearch: (search: Record<string, unknown>) => ({
     type: search.type === "quote" || search.type === "invoice" ? search.type : undefined,
     status: search.status === "unpaid" ? search.status : undefined,
+    bucket: (isBucketKey(search.bucket) ? search.bucket : undefined) as BucketKey | undefined,
   }),
 });
 
 function DocsListPage() {
   const { docs, billing } = useStore();
-  const { type, status } = useSearch({ from: "/docs" });
+  const search = useSearch({ from: "/docs" });
+  const type = search.type;
+  const status = search.status;
+  const bucket = search.bucket as BucketKey | undefined;
 
   let title: string;
-  if (status === "unpaid") title = "Outstanding invoices";
+  if (bucket) title = bucketTitle[bucket];
+  else if (status === "unpaid") title = "Outstanding invoices";
   else if (type === "quote") title = "Quotes";
   else if (type === "invoice") title = "Invoices";
   else title = "Quotes & Invoices";
 
   const filtered = docs
     .filter((d) => {
+      if (bucket) return bucketMatch[bucket](d);
       if (type && d.type !== type) return false;
       if (status === "unpaid") return d.type === "invoice" && d.status !== "paid";
       return d.type === "quote" || d.type === "invoice";

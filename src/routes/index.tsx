@@ -8,6 +8,7 @@ import { format, differenceInCalendarDays } from "date-fns";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { bucketMatch, bucketLabel, bucketBadge, invoiceBuckets, quoteBuckets, type BucketKey } from "@/lib/doc-buckets";
 
 export const Route = createFileRoute("/")({ component: Index });
 
@@ -67,6 +68,11 @@ function Index() {
         <Stat label="Paid (month)" value={fmtMoney(stats.paidThisMonth, billing.currency)} />
         <Stat label="Quotes (month)" value={String(stats.quotes)} to="/docs" search={{ type: "quote" }} />
         <Stat label="Invoices (month)" value={String(stats.invoices)} to="/docs" search={{ type: "invoice" }} />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-4">
+        <StatusPanel title="Invoices" docs={docs} keys={invoiceBuckets} />
+        <StatusPanel title="Quotes" docs={docs} keys={quoteBuckets} />
       </div>
 
       <Card className="p-3 sm:p-4">
@@ -153,6 +159,35 @@ function Stat({ label, value, accent, to, search }: { label: string; value: stri
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-muted-foreground py-6 text-center">{children}</p>;
+}
+
+function StatusPanel({ title, docs, keys }: { title: string; docs: Doc[]; keys: BucketKey[] }) {
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-3 py-2 border-b bg-muted/40">
+        <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-medium">{title}</div>
+      </div>
+      <ul className="divide-y">
+        {keys.map((k) => {
+          const count = docs.filter(bucketMatch[k]).length;
+          return (
+            <li key={k}>
+              <Link
+                to="/docs"
+                search={{ bucket: k }}
+                className="flex items-center justify-between gap-2 px-3 py-2.5 active:bg-muted transition-colors"
+              >
+                <span className="text-xs sm:text-sm uppercase tracking-wide">{bucketLabel[k]}</span>
+                <span className={cn("min-w-6 h-6 px-1.5 rounded-full inline-flex items-center justify-center text-[11px] font-semibold", bucketBadge[k])}>
+                  {count}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
 }
 
 function List({ docs, currency, vat }: { docs: Doc[]; currency: string; vat: number }) {
