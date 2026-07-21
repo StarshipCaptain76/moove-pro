@@ -18,7 +18,10 @@ export const Route = createFileRoute("/docs")({
 
 function DocsListPage() {
   const { docs, billing } = useStore();
-  const { type, status, bucket } = useSearch({ from: "/docs" });
+  const search = useSearch({ from: "/docs" });
+  const type = search.type;
+  const status = search.status;
+  const bucket = search.bucket as BucketKey | undefined;
 
   let title: string;
   if (bucket) title = bucketTitle[bucket];
