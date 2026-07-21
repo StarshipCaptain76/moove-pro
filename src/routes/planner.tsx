@@ -45,6 +45,38 @@ const MATERIAL_HEX: Record<MaterialKey, string> = {
   other:     "#0ea5e9",
 };
 
+function buildMapJobs(jobs: Doc[], from: Date): PlannerMapJob[] {
+  const days: string[] = [];
+  for (let i = 0; i < 7; i++) days.push(format(addDays(from, i), "yyyy-MM-dd"));
+  const seen = new Set<string>();
+  const out: PlannerMapJob[] = [];
+  for (const iso of days) {
+    for (const d of jobs) {
+      if (!coversDay(d, iso)) continue;
+      // one pin per job on its start day within the window
+      const startIso = d.scheduledDate || paidDate(d);
+      const showIso = (startIso && days.includes(startIso)) ? startIso : iso;
+      const key = d.id + ":" + showIso;
+      if (seen.has(d.id)) continue;
+      seen.add(d.id);
+      const cat = jobMaterialCategory(d);
+      out.push({
+        id: d.id,
+        date: showIso,
+        color: MATERIAL_HEX[cat],
+        category: MATERIALS[cat].label,
+        customer: d.customer?.name || "Job",
+        number: d.number,
+        fromAddress: d.fromAddress,
+        toAddress: d.toAddress,
+        fromCoords: d.fromCoords,
+        toCoords: d.toCoords,
+      });
+    }
+  }
+  return out;
+}
+
 function jobMaterialCategory(doc: Doc): MaterialKey {
   const text = doc.items.map((i) => i.description.toLowerCase()).join(" ");
   if (/furniture/.test(text)) return "furniture";
