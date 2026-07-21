@@ -12,7 +12,7 @@ export const Route = createFileRoute("/docs")({
   validateSearch: (search: Record<string, unknown>) => ({
     type: search.type === "quote" || search.type === "invoice" ? search.type : undefined,
     status: search.status === "unpaid" ? search.status : undefined,
-    bucket: isBucketKey(search.bucket) ? (search.bucket as BucketKey) : undefined,
+    bucket: (isBucketKey(search.bucket) ? search.bucket : undefined) as BucketKey | undefined,
   }),
 });
 
