@@ -25,8 +25,8 @@ export const bucketMatch: Record<BucketKey, (d: Doc) => boolean> = {
   "inv-unpaid":    (d) => d.type === "invoice" && (d.status === "sent" || d.status === "accepted") && daysOld(d.createdAt) <= 14,
   "inv-overdue":   (d) => d.type === "invoice" && (d.status === "sent" || d.status === "accepted") && daysOld(d.createdAt) > 14,
   "inv-paid":      (d) => d.type === "invoice" && d.status === "paid" && isThisMonth(d.paidAt ?? d.createdAt),
-  "quote-draft":   (d) => d.type === "quote" && d.status === "draft" && !d.archived,
-  "quote-awaiting":(d) => d.type === "quote" && d.status === "sent" && !d.archived,
+  "quote-draft":   (d) => d.type === "quote" && d.status === "draft" && !d.archived && daysOld(d.createdAt) <= 10,
+  "quote-awaiting":(d) => d.type === "quote" && d.status === "sent" && !d.archived && daysOld(d.createdAt) <= 10,
   "quote-accepted":(d) => d.type === "quote" && d.status === "accepted",
   "quote-declined":(d) => d.type === "quote" && (d.status === "cancelled" || ((d.status === "draft" || d.status === "sent") && daysOld(d.createdAt) > 10)),
 };
