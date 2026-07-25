@@ -16,7 +16,7 @@ import {
   Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle,
   MoreVertical, ChevronDown, ChevronUp,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
