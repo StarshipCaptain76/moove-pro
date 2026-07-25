@@ -232,8 +232,12 @@ function DocPage() {
                   onPick={(c) => upsertDoc({ ...doc, customer: { ...c } })}
                 />
               </div>
-              <div><Label>Phone</Label><Input value={doc.customer.phone} onChange={(e) => updateCust({ phone: e.target.value })} placeholder="0821234567" /></div>
-              <div><Label>Email</Label><Input value={doc.customer.email} onChange={(e) => updateCust({ email: e.target.value })} /></div>
+              {doc.type !== "job" && (
+                <>
+                  <div><Label>Phone</Label><Input value={doc.customer.phone} onChange={(e) => updateCust({ phone: e.target.value })} placeholder="0821234567" /></div>
+                  <div><Label>Email</Label><Input value={doc.customer.email} onChange={(e) => updateCust({ email: e.target.value })} /></div>
+                </>
+              )}
               <div className="col-span-2">
                 <Label>Customer address</Label>
                 <AddressAutocomplete
@@ -242,6 +246,7 @@ function DocPage() {
                   onChange={(v) => updateCust({ address: v.address })}
                 />
               </div>
+              {doc.type !== "job" && (
               <div className="col-span-2">
                 <Label>VAT / Tax number</Label>
                 <Input
@@ -250,6 +255,8 @@ function DocPage() {
                   placeholder="Optional"
                 />
               </div>
+              )}
+              {doc.type !== "job" && (<>
               <div className="col-span-2">
                 <Label>From address</Label>
                 <AddressAutocomplete
@@ -287,9 +294,11 @@ function DocPage() {
                   <span className="text-muted-foreground">{doc.distanceKm} km</span>
                 ) : null}
               </div>
+              </>)}
             </div>
           </Card>
 
+          {doc.type !== "job" && (
           <Card className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold">Line items</h2>
@@ -351,14 +360,20 @@ function DocPage() {
               ))}
             </div>
           </Card>
+          )}
 
           <Card className="p-4">
-            <Label>Notes</Label>
-            <Textarea value={doc.notes ?? ""} onChange={(e) => update({ notes: e.target.value })} placeholder="Terms, thanks, etc." />
+            <Label>{doc.type === "job" ? "What needs to be done" : "Notes"}</Label>
+            <Textarea
+              value={doc.notes ?? ""}
+              onChange={(e) => update({ notes: e.target.value })}
+              placeholder={doc.type === "job" ? "Describe the work…" : "Terms, thanks, etc."}
+            />
           </Card>
         </div>
 
         <div className="space-y-4">
+          {doc.type !== "job" && (
           <Card className="p-4">
             <div className="text-sm space-y-1.5">
               <Row label="Subtotal" v={fmtMoney(t.subtotal, billing.currency)} />
@@ -386,6 +401,7 @@ function DocPage() {
               </label>
             </div>
           </Card>
+          )}
 
           <Card className="p-4">
             <Label className="flex items-center gap-1 mb-1"><CalendarIcon className="h-3.5 w-3.5" /> Scheduled date</Label>
@@ -417,6 +433,7 @@ function DocPage() {
             )}
           </Card>
 
+          {doc.type !== "job" && (
           <Card className="p-4 space-y-2">
             <h3 className="font-semibold text-sm">Send</h3>
             <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => send("wa")}>
@@ -429,6 +446,7 @@ function DocPage() {
               <Download className="h-4 w-4 mr-2" /> PDF
             </Button>
           </Card>
+          )}
 
           <Card className="p-4 space-y-2">
             <h3 className="font-semibold text-sm">Actions</h3>
