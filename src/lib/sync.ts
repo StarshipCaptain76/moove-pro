@@ -47,9 +47,13 @@ export function isAuthed() {
 let suppressPush = false;
 
 const DEFAULT_CATALOG_NAMES = new Set([
+  "extra labour",
   "extra labour per hour",
+  "local move",
   "local move up to 3 rooms",
+  "packing service",
   "packing service per hour",
+  "storage",
   "storage per month",
 ]);
 
