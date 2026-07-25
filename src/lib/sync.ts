@@ -196,6 +196,7 @@ export function pushDoc(d: Doc) {
       from_coords: (d.fromCoords ?? null) as unknown as never,
       to_coords: (d.toCoords ?? null) as unknown as never,
       distance_km: d.distanceKm ?? null,
+      job_category: d.jobCategory ?? null,
     });
     if (error) throw error;
   });
@@ -369,6 +370,7 @@ async function loadAll() {
         from_coords: unknown;
         to_coords: unknown;
         distance_km: number | string | null;
+        job_category: string | null;
       }>("docs", uid),
       fetchOwnedRows<{
         id: string;
@@ -441,6 +443,7 @@ async function loadAll() {
         fromCoords: (r.from_coords as Doc["fromCoords"]) ?? undefined,
         toCoords: (r.to_coords as Doc["toCoords"]) ?? undefined,
         distanceKm: r.distance_km != null ? Number(r.distance_km) : undefined,
+        jobCategory: (r.job_category as Doc["jobCategory"]) ?? undefined,
       }));
 
       const expenses: Expense[] = expenseRows.map((r) => ({

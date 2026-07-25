@@ -4,7 +4,7 @@ import logoAsset from "@/assets/moove-logo.png.asset.json";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Calendar, BarChart3, Settings,
-  Cloud, CloudOff, Plus, FileText, Receipt, Wallet, LogIn, LogOut, User,
+  Cloud, CloudOff, Plus, FileText, Receipt, Wallet, LogIn, LogOut, User, Truck,
 } from "lucide-react";
 import { initSync, subscribeSync } from "@/lib/sync";
 import { useStore, newId, type Doc } from "@/lib/store";
@@ -66,7 +66,7 @@ function MobileTabBar() {
   const nav = useNavigate();
   const { billing, upsertDoc, nextDocNumber } = useStore();
 
-  const create = (type: "quote" | "invoice") => {
+  const create = (type: "quote" | "invoice" | "job") => {
     const id = newId();
     const d: Doc = {
       id,
@@ -78,6 +78,7 @@ function MobileTabBar() {
       items: [],
       depositPct: billing.defaultDepositPct,
       depositPaid: false,
+      ...(type === "job" ? { jobCategory: "other" as const } : {}),
     };
     upsertDoc(d);
     setNewOpen(false);
@@ -139,6 +140,13 @@ function MobileTabBar() {
             <SheetTitle className="font-display text-3xl tracking-wide">CREATE NEW</SheetTitle>
           </SheetHeader>
           <div className="grid gap-3 mt-4 pb-[env(safe-area-inset-bottom)]">
+            <Button size="lg" variant="secondary" className="h-16 text-lg justify-start bg-sky-500/15 hover:bg-sky-500/25 text-foreground border border-sky-500/40" onClick={() => create("job")}>
+              <Truck className="h-6 w-6 mr-3" />
+              <div className="text-left">
+                <div className="font-bold">New Job</div>
+                <div className="text-xs opacity-80 font-normal">Schedule work — convert to quote or invoice later</div>
+              </div>
+            </Button>
             <Button size="lg" className="h-16 text-lg justify-start" onClick={() => create("quote")}>
               <FileText className="h-6 w-6 mr-3" />
               <div className="text-left">

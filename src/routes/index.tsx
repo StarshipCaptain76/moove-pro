@@ -22,6 +22,7 @@ function Index() {
   useEffect(() => {
     const now = new Date();
     docs.forEach((d) => {
+      if (d.type === "job") return;
       if (d.status === "draft") {
         const total = docTotals(d, billing.vatPct).total;
         const ageDays = differenceInCalendarDays(now, new Date(d.createdAt));

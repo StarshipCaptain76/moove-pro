@@ -16,7 +16,8 @@ import {
 
 export type Unit = "each" | "hour" | "km" | "job";
 export type PayMethod = "cash" | "eft" | "card";
-export type DocType = "quote" | "invoice";
+export type DocType = "quote" | "invoice" | "job";
+export type JobCategory = "furniture" | "rubble" | "grass" | "garden" | "other";
 export type DocStatus = "draft" | "sent" | "accepted" | "paid" | "cancelled";
 export type Density = "compact" | "normal" | "comfortable";
 
@@ -99,6 +100,7 @@ export interface Doc {
   fromCoords?: { lat: number; lng: number };
   toCoords?: { lat: number; lng: number };
   distanceKm?: number;
+  jobCategory?: JobCategory;
 }
 
 export interface Company {
@@ -127,8 +129,10 @@ export interface BillingSettings {
   vatPct: number;
   quotePrefix: string;
   invoicePrefix: string;
+  jobPrefix: string;
   nextQuoteNo: number;
   nextInvoiceNo: number;
+  nextJobNo: number;
   currency: string;
 }
 
@@ -194,8 +198,10 @@ export const useStore = create<State>()(
         vatPct: 0,
         quotePrefix: "Q",
         invoicePrefix: "INV",
+        jobPrefix: "JOB",
         nextQuoteNo: 1001,
         nextInvoiceNo: 1001,
+        nextJobNo: 1,
         currency: "R",
       },
       catalog: [
@@ -267,6 +273,12 @@ export const useStore = create<State>()(
           set({ billing: { ...b, nextQuoteNo: n + 1 } });
           pushCompanyProfile();
           return `${b.quotePrefix}-${n}`;
+        }
+        if (t === "job") {
+          const n = b.nextJobNo ?? 1;
+          set({ billing: { ...b, nextJobNo: n + 1, jobPrefix: b.jobPrefix ?? "JOB" } });
+          pushCompanyProfile();
+          return `${b.jobPrefix ?? "JOB"}-${n}`;
         }
         const n = b.nextInvoiceNo;
         set({ billing: { ...b, nextInvoiceNo: n + 1 } });

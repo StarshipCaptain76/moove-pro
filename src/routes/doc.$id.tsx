@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod, type DocStatus } from "@/lib/store";
+import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod, type DocStatus, type JobCategory } from "@/lib/store";
 import { downloadPdf } from "@/lib/pdf";
 import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -150,6 +150,13 @@ function DocPage() {
     toast.success(`Converted to invoice ${invNum}`);
   };
 
+  const convertToQuote = () => {
+    const qNum = nextDocNumber("quote");
+    upsertDoc({ ...doc, type: "quote", number: qNum, status: "draft", archived: false });
+    void flushSync();
+    toast.success(`Converted to quote ${qNum}`);
+  };
+
   const markPaid = (m: PayMethod) => {
     update({ status: "paid", archived: false, paymentMethod: m, paidAt: new Date().toISOString(), scheduledDate: doc.scheduledDate ?? new Date().toISOString().slice(0, 10) });
     void flushSync();
@@ -160,7 +167,7 @@ function DocPage() {
     <Shell>
       <div className="flex items-center gap-3 mb-4">
         <Button variant="ghost" size="icon" onClick={() => nav({ to: "/" })}><ArrowLeft className="h-4 w-4" /></Button>
-        <h1 className="font-display text-4xl tracking-wide">{doc.type === "quote" ? "QUOTE" : "INVOICE"} {doc.number}</h1>
+        <h1 className="font-display text-4xl tracking-wide">{doc.type === "quote" ? "QUOTE" : doc.type === "job" ? "JOB" : "INVOICE"} {doc.number}</h1>
         {doc.type === "invoice" && (
           <span className={`text-xs uppercase font-bold px-2 py-1 rounded ${doc.status === "paid" ? "bg-green-600 text-white" : "bg-muted"}`}>{doc.status}</span>
         )}
@@ -173,6 +180,35 @@ function DocPage() {
           onSet={(s: DocStatus) => update({ status: s })}
           onConvert={convert}
         />
+      )}
+
+      {doc.type === "job" && (
+        <Card className="p-4 mb-4">
+          <Label className="mb-2 block">Work type</Label>
+          <div className="flex flex-wrap gap-2">
+            {([
+              { k: "furniture", label: "Furniture" },
+              { k: "rubble", label: "Garden rubble" },
+              { k: "grass", label: "Grass treatment" },
+              { k: "garden", label: "Trimming" },
+              { k: "other", label: "Other" },
+            ] as { k: JobCategory; label: string }[]).map((c) => (
+              <button
+                key={c.k}
+                type="button"
+                onClick={() => update({ jobCategory: c.k })}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-semibold uppercase border transition-colors",
+                  (doc.jobCategory ?? "other") === c.k
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background border-border hover:bg-muted",
+                )}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </Card>
       )}
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-4">
@@ -396,6 +432,16 @@ function DocPage() {
 
           <Card className="p-4 space-y-2">
             <h3 className="font-semibold text-sm">Actions</h3>
+            {doc.type === "job" && (
+              <>
+                <Button variant="secondary" className="w-full" onClick={convertToQuote}>
+                  <FileText className="h-4 w-4 mr-2" /> Convert to Quote
+                </Button>
+                <Button className="w-full" onClick={convert}>
+                  <Check className="h-4 w-4 mr-2" /> Convert to Invoice
+                </Button>
+              </>
+            )}
             {doc.type === "quote" && (
               <Button variant="secondary" className="w-full" onClick={convert}>
                 <Check className="h-4 w-4 mr-2" /> Accept → Invoice

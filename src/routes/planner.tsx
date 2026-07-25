@@ -82,6 +82,9 @@ function buildMapJobs(jobs: Doc[], from: Date): PlannerMapJob[] {
 }
 
 function jobMaterialCategory(doc: Doc): MaterialKey {
+  if (doc.jobCategory && (doc.jobCategory as string) in MATERIALS) {
+    return doc.jobCategory as MaterialKey;
+  }
   const text = doc.items.map((i) => i.description.toLowerCase()).join(" ");
   if (/furniture/.test(text)) return "furniture";
   if (/rubble/.test(text)) return "rubble";
@@ -164,7 +167,8 @@ function PlannerPage() {
         (d) =>
           d.status === "accepted" ||
           d.status === "paid" ||
-          (d.type === "invoice" && d.status !== "cancelled"),
+          (d.type === "invoice" && d.status !== "cancelled") ||
+          (d.type === "job" && d.status !== "cancelled"),
       ),
     [docs],
   );
@@ -173,7 +177,7 @@ function PlannerPage() {
   // Paid docs without a scheduled date are historical / closed jobs — don't
   // surface them as "unscheduled". Only accepted jobs still need scheduling.
   const unscheduled = jobs.filter(
-    (d) => !d.archived && !d.scheduledDate && d.status !== "paid" && (d.status === "accepted" || d.type === "invoice"),
+    (d) => !d.archived && !d.scheduledDate && d.status !== "paid" && (d.status === "accepted" || d.type === "invoice" || d.type === "job"),
   );
 
   const onDragEnd = (e: DragEndEvent) => {
