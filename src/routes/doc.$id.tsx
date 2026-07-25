@@ -411,3 +411,50 @@ function Row({ label, v, bold }: { label: string; v: string; bold?: boolean }) {
     </div>
   );
 }
+
+function QuoteStatusStepper({
+  status,
+  onSet,
+  onConvert,
+}: {
+  status: DocStatus;
+  onSet: (s: DocStatus) => void;
+  onConvert: () => void;
+}) {
+  const steps: { key: "draft" | "sent" | "accepted" | "invoice"; label: string }[] = [
+    { key: "draft", label: "Draft" },
+    { key: "sent", label: "Awaiting" },
+    { key: "accepted", label: "Accepted" },
+    { key: "invoice", label: "Invoice" },
+  ];
+  const idx = status === "draft" ? 0 : status === "sent" ? 1 : status === "accepted" ? 2 : -1;
+  return (
+    <div className="flex items-center gap-1 mb-4 overflow-x-auto">
+      {steps.map((s, i) => {
+        const isCurrent = i === idx;
+        const isDone = idx > i;
+        const isInvoiceStep = s.key === "invoice";
+        return (
+          <div key={s.key} className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => (isInvoiceStep ? onConvert() : onSet(s.key as DocStatus))}
+              className={cn(
+                "text-xs font-semibold uppercase px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap",
+                isCurrent && "bg-primary text-primary-foreground border-primary",
+                !isCurrent && isDone && "bg-muted text-muted-foreground border-transparent",
+                !isCurrent && !isDone && !isInvoiceStep && "bg-background text-foreground/70 border-border hover:bg-muted",
+                isInvoiceStep && !isCurrent && "bg-green-600/10 text-green-700 border-green-600/40 hover:bg-green-600/20",
+              )}
+            >
+              {isDone && <Check className="inline h-3 w-3 mr-1 -mt-0.5" />}
+              {isInvoiceStep && <FileText className="inline h-3 w-3 mr-1 -mt-0.5" />}
+              {s.label}
+            </button>
+            {i < steps.length - 1 && <span className="text-muted-foreground">›</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
