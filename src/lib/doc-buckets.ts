@@ -13,11 +13,18 @@ export type BucketKey =
 
 const daysOld = (iso?: string) => (iso ? differenceInCalendarDays(new Date(), new Date(iso)) : 0);
 
+const isThisMonth = (iso?: string) => {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+};
+
 export const bucketMatch: Record<BucketKey, (d: Doc) => boolean> = {
   "inv-draft":     (d) => d.type === "invoice" && d.status === "draft",
   "inv-unpaid":    (d) => d.type === "invoice" && (d.status === "sent" || d.status === "accepted") && daysOld(d.createdAt) <= 14,
   "inv-overdue":   (d) => d.type === "invoice" && (d.status === "sent" || d.status === "accepted") && daysOld(d.createdAt) > 14,
-  "inv-paid":      (d) => d.type === "invoice" && d.status === "paid",
+  "inv-paid":      (d) => d.type === "invoice" && d.status === "paid" && isThisMonth(d.paidAt ?? d.updatedAt),
   "quote-draft":   (d) => d.type === "quote" && d.status === "draft" && !d.archived,
   "quote-awaiting":(d) => d.type === "quote" && d.status === "sent" && !d.archived,
   "quote-accepted":(d) => d.type === "quote" && d.status === "accepted",
@@ -39,7 +46,7 @@ export const bucketTitle: Record<BucketKey, string> = {
   "inv-draft": "Draft invoices",
   "inv-unpaid": "Unpaid invoices",
   "inv-overdue": "Overdue invoices",
-  "inv-paid": "Paid invoices",
+  "inv-paid": "Paid invoices this month",
   "quote-draft": "Draft quotes",
   "quote-awaiting": "Quotes awaiting acceptance",
   "quote-accepted": "Accepted quotes",
