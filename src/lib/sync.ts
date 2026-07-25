@@ -443,6 +443,7 @@ async function loadAll() {
         fromCoords: (r.from_coords as Doc["fromCoords"]) ?? undefined,
         toCoords: (r.to_coords as Doc["toCoords"]) ?? undefined,
         distanceKm: r.distance_km != null ? Number(r.distance_km) : undefined,
+        jobCategory: (r.job_category as Doc["jobCategory"]) ?? undefined,
       }));
 
       const expenses: Expense[] = expenseRows.map((r) => ({
