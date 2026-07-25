@@ -232,12 +232,8 @@ function DocPage() {
                   onPick={(c) => upsertDoc({ ...doc, customer: { ...c } })}
                 />
               </div>
-              {doc.type !== "job" && (
-                <>
-                  <div><Label>Phone</Label><Input value={doc.customer.phone} onChange={(e) => updateCust({ phone: e.target.value })} placeholder="0821234567" /></div>
-                  <div><Label>Email</Label><Input value={doc.customer.email} onChange={(e) => updateCust({ email: e.target.value })} /></div>
-                </>
-              )}
+              <div><Label>Phone{doc.type === "job" ? " (optional)" : ""}</Label><Input value={doc.customer.phone} onChange={(e) => updateCust({ phone: e.target.value })} placeholder="0821234567" /></div>
+              <div><Label>Email{doc.type === "job" ? " (optional)" : ""}</Label><Input value={doc.customer.email} onChange={(e) => updateCust({ email: e.target.value })} /></div>
               <div className="col-span-2">
                 <Label>Customer address</Label>
                 <AddressAutocomplete
