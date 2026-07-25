@@ -243,6 +243,7 @@ function DocPage() {
                 <CatalogPicker
                   catalog={catalog}
                   currency={billing.currency}
+                  usage={useCatalogUsage(docs)}
                   onPick={(c) => addItem({ description: c.name, price: c.price, unit: c.unit, qty: 1 })}
                 />
                 <Button size="sm" variant="outline" onClick={() => addKm()}><Truck className="h-4 w-4 mr-1" /> KM</Button>
