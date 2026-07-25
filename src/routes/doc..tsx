@@ -16,7 +16,7 @@ import {
   Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle,
   MoreVertical, ChevronDown, ChevronUp,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -49,6 +49,18 @@ function DocPage() {
   const [calcing, setCalcing] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+
+  const catalogUsage = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const d of docs) {
+      for (const it of d.items ?? []) {
+        const k = (it.description ?? "").trim().toLowerCase();
+        if (!k) continue;
+        map[k] = (map[k] ?? 0) + 1;
+      }
+    }
+    return map;
+  }, [docs]);
 
   if (!doc) {
     return (
@@ -248,6 +260,7 @@ function DocPage() {
             <CatalogPicker
               catalog={catalog}
               currency={billing.currency}
+              usage={catalogUsage}
               onPick={(c) => addItem({ description: c.name, price: c.price, unit: c.unit, qty: 1 })}
               triggerClassName="h-11 w-full"
             />

@@ -13,13 +13,21 @@ interface Props {
   currency: string;
   onPick: (c: CatalogItem) => void;
   triggerClassName?: string;
+  usage?: Record<string, number>;
 }
 
-export function CatalogPicker({ catalog, currency, onPick, triggerClassName }: Props) {
+export function CatalogPicker({ catalog, currency, onPick, triggerClassName, usage }: Props) {
   const [open, setOpen] = useState(false);
   const sorted = useMemo(
-    () => [...catalog].sort((a, b) => a.name.localeCompare(b.name)),
-    [catalog],
+    () => {
+      const use = (c: CatalogItem) => usage?.[c.name.trim().toLowerCase()] ?? 0;
+      return [...catalog].sort((a, b) => {
+        const ua = use(a), ub = use(b);
+        if (ua !== ub) return ub - ua;
+        return a.name.localeCompare(b.name);
+      });
+    },
+    [catalog, usage],
   );
   return (
     <Popover open={open} onOpenChange={setOpen}>
