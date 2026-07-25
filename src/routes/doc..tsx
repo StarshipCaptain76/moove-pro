@@ -52,11 +52,17 @@ function DocPage() {
 
   const catalogUsage = useMemo(() => {
     const map: Record<string, number> = {};
+    const now = Date.now();
+    const HALF_LIFE_MS = 1000 * 60 * 60 * 24 * 60; // 60 days
     for (const d of docs) {
+      const ts = new Date(d.paidAt ?? d.createdAt ?? now).getTime();
+      const ageMs = Math.max(0, now - ts);
+      const recencyWeight = Math.pow(0.5, ageMs / HALF_LIFE_MS) + 0.1;
       for (const it of d.items ?? []) {
         const k = (it.description ?? "").trim().toLowerCase();
         if (!k) continue;
-        map[k] = (map[k] ?? 0) + 1;
+        const qty = Math.max(1, Number(it.qty) || 1);
+        map[k] = (map[k] ?? 0) + qty * recencyWeight;
       }
     }
     return map;
