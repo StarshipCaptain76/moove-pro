@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod } from "@/lib/store";
+import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod, type DocStatus } from "@/lib/store";
 import { downloadPdf } from "@/lib/pdf";
-import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle } from "lucide-react";
+import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -143,9 +143,19 @@ function DocPage() {
       <div className="flex items-center gap-3 mb-4">
         <Button variant="ghost" size="icon" onClick={() => nav({ to: "/" })}><ArrowLeft className="h-4 w-4" /></Button>
         <h1 className="font-display text-4xl tracking-wide">{doc.type === "quote" ? "QUOTE" : "INVOICE"} {doc.number}</h1>
-        <span className={`text-xs uppercase font-bold px-2 py-1 rounded ${doc.status === "paid" ? "bg-green-600 text-white" : "bg-muted"}`}>{doc.status}</span>
+        {doc.type === "invoice" && (
+          <span className={`text-xs uppercase font-bold px-2 py-1 rounded ${doc.status === "paid" ? "bg-green-600 text-white" : "bg-muted"}`}>{doc.status}</span>
+        )}
         <Button variant="ghost" size="icon" className="ml-auto" onClick={() => { deleteDoc(doc.id); nav({ to: "/" }); }}><Trash2 className="h-4 w-4" /></Button>
       </div>
+
+      {doc.type === "quote" && (
+        <QuoteStatusStepper
+          status={doc.status}
+          onSet={(s: DocStatus) => update({ status: s })}
+          onConvert={convert}
+        />
+      )}
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-4">
         <div className="space-y-4">
@@ -398,6 +408,53 @@ function Row({ label, v, bold }: { label: string; v: string; bold?: boolean }) {
   return (
     <div className={`flex justify-between ${bold ? "font-bold text-base" : ""}`}>
       <span>{label}</span><span>{v}</span>
+    </div>
+  );
+}
+
+function QuoteStatusStepper({
+  status,
+  onSet,
+  onConvert,
+}: {
+  status: DocStatus;
+  onSet: (s: DocStatus) => void;
+  onConvert: () => void;
+}) {
+  const steps: { key: "draft" | "sent" | "accepted" | "invoice"; label: string }[] = [
+    { key: "draft", label: "Draft" },
+    { key: "sent", label: "Awaiting" },
+    { key: "accepted", label: "Accepted" },
+    { key: "invoice", label: "Invoice" },
+  ];
+  const idx = status === "draft" ? 0 : status === "sent" ? 1 : status === "accepted" ? 2 : -1;
+  return (
+    <div className="flex items-center gap-1 mb-4 overflow-x-auto">
+      {steps.map((s, i) => {
+        const isCurrent = i === idx;
+        const isDone = idx > i;
+        const isInvoiceStep = s.key === "invoice";
+        return (
+          <div key={s.key} className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => (isInvoiceStep ? onConvert() : onSet(s.key as DocStatus))}
+              className={cn(
+                "text-xs font-semibold uppercase px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap",
+                isCurrent && "bg-primary text-primary-foreground border-primary",
+                !isCurrent && isDone && "bg-muted text-muted-foreground border-transparent",
+                !isCurrent && !isDone && !isInvoiceStep && "bg-background text-foreground/70 border-border hover:bg-muted",
+                isInvoiceStep && !isCurrent && "bg-green-600/10 text-green-700 border-green-600/40 hover:bg-green-600/20",
+              )}
+            >
+              {isDone && <Check className="inline h-3 w-3 mr-1 -mt-0.5" />}
+              {isInvoiceStep && <FileText className="inline h-3 w-3 mr-1 -mt-0.5" />}
+              {s.label}
+            </button>
+            {i < steps.length - 1 && <span className="text-muted-foreground">›</span>}
+          </div>
+        );
+      })}
     </div>
   );
 }
