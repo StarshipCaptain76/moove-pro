@@ -13,12 +13,28 @@ import { bucketMatch, bucketLabel, bucketBadge, invoiceBuckets, quoteBuckets, ty
 export const Route = createFileRoute("/")({ component: Index });
 
 function Index() {
-  const { docs, billing, company, upsertDoc } = useStore();
+  const { docs, billing, company, upsertDoc, deleteDoc } = useStore();
 
-  // Auto-archive: quotes older than 10 days that are still draft/sent.
+  // One-shot housekeeping on mount:
+  // 1. Auto-delete abandoned drafts (zero total / no items) older than 2 days.
+  // 2. Auto-promote drafts to "sent" once they have a customer name AND a total.
+  // 3. Auto-archive quotes older than 10 days still in draft/sent.
   useEffect(() => {
     const now = new Date();
     docs.forEach((d) => {
+      if (d.status === "draft") {
+        const total = docTotals(d, billing.vatPct).total;
+        const ageDays = differenceInCalendarDays(now, new Date(d.createdAt));
+        const empty = d.items.length === 0 || total <= 0;
+        if (empty && ageDays >= 2) {
+          deleteDoc(d.id);
+          return;
+        }
+        if (!empty && d.customer.name.trim()) {
+          upsertDoc({ ...d, status: "sent" });
+          return;
+        }
+      }
       if (
         d.type === "quote" &&
         !d.archived &&
