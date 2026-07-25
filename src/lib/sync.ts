@@ -46,6 +46,31 @@ export function isAuthed() {
 // Suppress push while we're hydrating the store from the cloud.
 let suppressPush = false;
 
+const DEFAULT_CATALOG_NAMES = new Set([
+  "extra labour per hour",
+  "local move up to 3 rooms",
+  "packing service per hour",
+  "storage per month",
+]);
+
+function normalizedCatalogName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function isBuiltInDefaultCatalogItem(item: CatalogItem) {
+  return DEFAULT_CATALOG_NAMES.has(normalizedCatalogName(item.name));
+}
+
+function dedupeCatalogByName(items: CatalogItem[]) {
+  const byName = new Map<string, CatalogItem>();
+  for (const item of items) {
+    const key = normalizedCatalogName(item.name);
+    if (!key) continue;
+    if (!byName.has(key)) byName.set(key, item);
+  }
+  return Array.from(byName.values());
+}
+
 function runningTask(): Status {
   if (state.loading) return "loading";
   if (state.pending > 0) return "syncing";
@@ -374,12 +399,12 @@ async function loadAll() {
         : prev.billing;
       const density = (profileRow?.density as Density | undefined) ?? prev.density;
 
-      const catalog: CatalogItem[] = catRows.map((r) => ({
+      const catalog: CatalogItem[] = dedupeCatalogByName(catRows.map((r) => ({
         id: r.id,
         name: r.name,
         price: Number(r.price),
         unit: r.unit as CatalogItem["unit"],
-      }));
+      })));
 
       const customers: Customer[] = customerRows.map((r) => ({
         id: r.id,
@@ -444,7 +469,13 @@ async function loadAll() {
         return Array.from(map.values());
       };
 
-      const mergedCatalog = mergeById(catalog, prev.catalog ?? []);
+      const remoteCatalogNames = new Set(catalog.map((x) => normalizedCatalogName(x.name)));
+      const localCatalogToMerge = (prev.catalog ?? []).filter((x) => {
+        const key = normalizedCatalogName(x.name);
+        if (remoteCatalogNames.has(key)) return false;
+        return !isBuiltInDefaultCatalogItem(x);
+      });
+      const mergedCatalog = dedupeCatalogByName(mergeById(catalog, localCatalogToMerge));
       const mergedCustomers = mergeById(customers, prev.customers ?? []);
       const mergedDocs = mergeById(docs, prev.docs ?? []);
       const mergedExpenses = mergeById(expenses, prev.expenses ?? []);
@@ -468,7 +499,11 @@ async function loadAll() {
         docs: new Set(docs.map((x) => x.id)),
         expenses: new Set(expenses.map((x) => x.id)),
       };
-      const localOnlyCatalog = (prev.catalog ?? []).filter((x) => !cloudIds.catalog.has(x.id));
+      const localOnlyCatalog = (prev.catalog ?? []).filter((x) => {
+        if (cloudIds.catalog.has(x.id)) return false;
+        if (isBuiltInDefaultCatalogItem(x)) return false;
+        return !remoteCatalogNames.has(normalizedCatalogName(x.name));
+      });
       const localOnlyCustomers = (prev.customers ?? []).filter((x) => !cloudIds.customers.has(x.id));
       const localOnlyDocs = (prev.docs ?? []).filter((x) => !cloudIds.docs.has(x.id));
       const localOnlyExpenses = (prev.expenses ?? []).filter((x) => !cloudIds.expenses.has(x.id));
