@@ -50,6 +50,18 @@ function DocPage() {
   const [payOpen, setPayOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
 
+  const catalogUsage = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const d of docs) {
+      for (const it of d.items ?? []) {
+        const k = (it.description ?? "").trim().toLowerCase();
+        if (!k) continue;
+        map[k] = (map[k] ?? 0) + 1;
+      }
+    }
+    return map;
+  }, [docs]);
+
   if (!doc) {
     return (
       <Shell>
@@ -248,6 +260,7 @@ function DocPage() {
             <CatalogPicker
               catalog={catalog}
               currency={billing.currency}
+              usage={catalogUsage}
               onPick={(c) => addItem({ description: c.name, price: c.price, unit: c.unit, qty: 1 })}
               triggerClassName="h-11 w-full"
             />
