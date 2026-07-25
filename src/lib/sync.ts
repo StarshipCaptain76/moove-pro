@@ -370,6 +370,7 @@ async function loadAll() {
         from_coords: unknown;
         to_coords: unknown;
         distance_km: number | string | null;
+        job_category: string | null;
       }>("docs", uid),
       fetchOwnedRows<{
         id: string;
