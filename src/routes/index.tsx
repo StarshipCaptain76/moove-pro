@@ -44,8 +44,7 @@ function Index() {
         upsertDoc({ ...d, archived: true });
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [docs, billing.vatPct, upsertDoc, deleteDoc]);
 
   const visible = docs.filter((d) => !d.archived);
   // Hide legacy archived quotes created before this cutoff — only quotes
