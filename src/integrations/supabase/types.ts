@@ -126,6 +126,7 @@ export type Database = {
           from_coords: Json | null
           id: string
           items: Json
+          job_category: string | null
           notes: string | null
           number: string
           owner_user_id: string
@@ -151,6 +152,7 @@ export type Database = {
           from_coords?: Json | null
           id: string
           items?: Json
+          job_category?: string | null
           notes?: string | null
           number: string
           owner_user_id: string
@@ -176,6 +178,7 @@ export type Database = {
           from_coords?: Json | null
           id?: string
           items?: Json
+          job_category?: string | null
           notes?: string | null
           number?: string
           owner_user_id?: string
