@@ -196,6 +196,7 @@ export function pushDoc(d: Doc) {
       from_coords: (d.fromCoords ?? null) as unknown as never,
       to_coords: (d.toCoords ?? null) as unknown as never,
       distance_km: d.distanceKm ?? null,
+      job_category: d.jobCategory ?? null,
     });
     if (error) throw error;
   });
