@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod } from "@/lib/store";
+import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod, type DocStatus } from "@/lib/store";
 import { downloadPdf } from "@/lib/pdf";
-import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle } from "lucide-react";
+import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -152,7 +152,7 @@ function DocPage() {
       {doc.type === "quote" && (
         <QuoteStatusStepper
           status={doc.status}
-          onSet={(s) => update({ status: s })}
+          onSet={(s: DocStatus) => update({ status: s })}
           onConvert={convert}
         />
       )}
