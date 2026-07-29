@@ -7,6 +7,7 @@ import {
   Cloud, CloudOff, Plus, FileText, Receipt, Wallet, LogIn, LogOut, User, Truck,
 } from "lucide-react";
 import { initSync, subscribeSync } from "@/lib/sync";
+import { startReminders } from "@/lib/reminders";
 import { useStore, newId, type Doc } from "@/lib/store";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export function Shell({ children }: { children: ReactNode }) {
     );
     return () => sub.subscription.unsubscribe();
   }, []);
+  useEffect(() => startReminders(), []);
   return (
     <div className="min-h-[100svh] bg-background text-foreground">
       <header className="sticky top-0 z-40 bg-secondary text-secondary-foreground border-b-4 border-primary pt-[env(safe-area-inset-top)]">
