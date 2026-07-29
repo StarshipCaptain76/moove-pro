@@ -85,6 +85,7 @@ export interface Doc {
   status: DocStatus;
   createdAt: string;
   scheduledDate?: string; // ISO date (yyyy-mm-dd)
+  scheduledTime?: string; // optional HH:mm start time
   scheduledEndDate?: string; // ISO date; when set, job spans scheduledDate..scheduledEndDate inclusive
   dayOrder?: number;
   archived?: boolean;
@@ -134,6 +135,8 @@ export interface BillingSettings {
   nextInvoiceNo: number;
   nextJobNo: number;
   currency: string;
+  remindersEnabled?: boolean;
+  reminderLeadMin?: number;
 }
 
 interface State {
@@ -203,6 +206,8 @@ export const useStore = create<State>()(
         nextInvoiceNo: 1001,
         nextJobNo: 1,
         currency: "R",
+        remindersEnabled: false,
+        reminderLeadMin: 30,
       },
       catalog: [
         { id: uid(), name: "Local Move (up to 3 rooms)", price: 3500, unit: "job" },
