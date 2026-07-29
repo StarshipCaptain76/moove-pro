@@ -24,6 +24,7 @@ import { AddressAutocomplete } from "@/components/app/AddressAutocomplete";
 import { CatalogPicker } from "@/components/app/CatalogPicker";
 import { InlineTumbler } from "@/components/app/InlineTumbler";
 import { DatePicker } from "@/components/app/DatePicker";
+import { TimePicker } from "@/components/app/TimePicker";
 import { Slider } from "@/components/ui/slider";
 import { useServerFn } from "@tanstack/react-start";
 import { routeDistance } from "@/lib/maps.functions";
@@ -402,6 +403,13 @@ function DocPage() {
           <Card className="p-4">
             <Label className="flex items-center gap-1 mb-1"><CalendarIcon className="h-3.5 w-3.5" /> Scheduled date</Label>
             <DatePicker value={doc.scheduledDate} onChange={(iso) => update({ scheduledDate: iso })} clearable />
+            <div className="mt-3">
+              <Label className="mb-1 block">Start time (optional)</Label>
+              <TimePicker
+                value={doc.scheduledTime}
+                onChange={(t) => update({ scheduledTime: t || undefined })}
+              />
+            </div>
             <label className="flex items-center gap-2 mt-3 text-sm">
               <input
                 type="checkbox"

@@ -590,6 +590,9 @@ function AgendaJob({ doc, iso, currency, vat }: { doc: Doc; iso?: string; curren
       <Link to="/doc/$id" params={{ id: doc.id }} className={cn("flex-1 min-w-0 flex items-center justify-between py-2 pr-3 gap-2", c.card)}>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="font-semibold text-sm truncate flex items-center gap-1.5">
+            {doc.scheduledTime && (
+              <span className="shrink-0 tabular-nums text-[11px] font-bold rounded bg-background/70 border px-1 py-px">{doc.scheduledTime}</span>
+            )}
             <span className="truncate">{doc.customer.name || "—"}</span>
             <PaymentIndicator doc={doc} />
             {span && (
@@ -719,6 +722,9 @@ function JobCard({ doc, iso, currency, vat }: { doc: Doc; iso?: string; currency
           span && !span.isLast && "rounded-r-none",
         )}>
         <div className="font-semibold truncate flex items-center gap-1.5">
+          {doc.scheduledTime && (
+            <span className="shrink-0 tabular-nums text-[10px] font-bold rounded bg-background/70 border px-1">{doc.scheduledTime}</span>
+          )}
           <span className="truncate">{doc.customer.name || "—"}</span>
           {span && (
             <span className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-full border border-current/30 bg-background/60 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide">

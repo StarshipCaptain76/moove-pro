@@ -155,3 +155,8 @@ html[data-density="comfortable"] { font-size: 17px; }
     color: var(--color-foreground);
   }
 }
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}

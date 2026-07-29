@@ -14,6 +14,8 @@ import historical from "@/data/historical.json";
 import bankImport from "@/data/bank-import-2026.json";
 import { InlineTumbler } from "@/components/app/InlineTumbler";
 import { Slider } from "@/components/ui/slider";
+import { WheelSelect } from "@/components/app/WheelSelect";
+import { notificationStatus, requestNotificationPermission } from "@/lib/reminders";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
@@ -80,6 +82,7 @@ function SettingsPage() {
             </div>
             <Button onClick={() => toast.success("Saved")} className="w-fit">Save</Button>
           </Card>
+          <RemindersEditor />
         </TabsContent>
 
         <TabsContent value="appearance">
@@ -96,6 +99,64 @@ function SettingsPage() {
 
 function DataEditor() {
   return <DataEditorInner />;
+}
+
+const LEAD_OPTIONS = [5, 10, 15, 30, 45, 60, 90, 120];
+
+function RemindersEditor() {
+  const { billing, setBilling } = useStore();
+  const [perm, setPerm] = useState<string>("default");
+  useEffect(() => setPerm(notificationStatus()), []);
+  const enabled = !!billing.remindersEnabled;
+  const lead = billing.reminderLeadMin ?? 30;
+  return (
+    <Card className="p-4 sm:p-6 grid gap-3 max-w-2xl mt-4">
+      <h3 className="font-semibold">Job reminders</h3>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={async (e) => {
+            const on = e.target.checked;
+            setBilling({ ...billing, remindersEnabled: on });
+            if (on) setPerm(await requestNotificationPermission());
+          }}
+        />
+        Notify me before a scheduled job starts
+      </label>
+
+      <div>
+        <Label className="mb-1 block">Warn me this long before</Label>
+        <div className="flex items-center gap-3">
+          <WheelSelect
+            values={LEAD_OPTIONS}
+            value={lead}
+            onChange={(v) => setBilling({ ...billing, reminderLeadMin: Number(v) })}
+            render={(v) => `${v} min`}
+            ariaLabel="Reminder lead time"
+            className="max-w-[140px]"
+          />
+          <p className="text-xs text-muted-foreground flex-1">
+            Roll to choose. Jobs with a start time will alert {lead} minutes before.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-xs text-muted-foreground">
+          Device notifications: {perm === "granted" ? "allowed" : perm === "denied" ? "blocked in browser settings" : perm === "unsupported" ? "not supported" : "not enabled"}
+        </span>
+        {perm !== "granted" && perm !== "unsupported" && (
+          <Button size="sm" variant="outline" onClick={async () => setPerm(await requestNotificationPermission())}>
+            Enable notifications
+          </Button>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Reminders fire while MOOVE is open on this device (add it to your home screen for best results).
+      </p>
+    </Card>
+  );
 }
 
 function DataEditorInner() {
