@@ -44,6 +44,14 @@ export async function generatePdf(
   pdf.setFont("helvetica", "normal");
   pdf.text(`No: ${doc.number}`, W - M, 27, { align: "right" });
   pdf.text(`Date: ${new Date(doc.createdAt).toLocaleDateString("en-ZA")}`, W - M, 32, { align: "right" });
+  if (doc.scheduledDate) {
+    pdf.text(
+      `Scheduled: ${new Date(doc.scheduledDate).toLocaleDateString("en-ZA")}${doc.scheduledTime ? ` at ${doc.scheduledTime}` : ""}`,
+      W - M,
+      37,
+      { align: "right" },
+    );
+  }
 
   // company block
   let y = 42;
