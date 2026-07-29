@@ -23,6 +23,19 @@ const nav = [
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const [session, setSession] = useState<{ loading: boolean; authed: boolean }>({
+    loading: true,
+    authed: false,
+  });
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) =>
+      setSession({ loading: false, authed: !!data.session }),
+    );
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) =>
+      setSession({ loading: false, authed: !!s }),
+    );
+    return () => sub.subscription.unsubscribe();
+  }, []);
   return (
     <div className="min-h-[100svh] bg-background text-foreground">
       <header className="sticky top-0 z-40 bg-secondary text-secondary-foreground border-b-4 border-primary pt-[env(safe-area-inset-top)]">
@@ -31,7 +44,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <img src={logoAsset.url} alt="MOOVE" className="h-8 sm:h-10 w-auto bg-white rounded p-1" />
             <span className="font-display text-2xl sm:text-3xl tracking-wider truncate">MOOVE</span>
           </Link>
-          <nav className="hidden md:flex gap-1 ml-auto items-center">
+          <nav className={cn("hidden gap-1 ml-auto items-center", session.authed && "md:flex")}>
             {nav.map((n) => {
               const active = n.to === "/" ? path === "/" : path.startsWith(n.to);
               const Icon = n.icon;
@@ -53,9 +66,27 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-6">
-        {children}
+        {session.loading ? null : session.authed ? children : <SignedOutPrompt />}
       </main>
-      <MobileTabBar />
+      {session.authed && <MobileTabBar />}
+    </div>
+  );
+}
+
+function SignedOutPrompt() {
+  return (
+    <div className="min-h-[50svh] flex items-center justify-center">
+      <div className="max-w-sm w-full text-center border rounded-xl p-6 bg-card">
+        <h1 className="font-display text-3xl tracking-wide">SIGN IN REQUIRED</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Sign in to view your jobs, quotes, invoices and expenses.
+        </p>
+        <Button asChild size="lg" className="mt-5 w-full">
+          <Link to="/auth">
+            <LogIn className="h-4 w-4 mr-2" /> Sign in
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }
