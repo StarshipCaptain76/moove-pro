@@ -181,6 +181,7 @@ export function pushDoc(d: Doc) {
       status: d.status,
       created_at: d.createdAt,
       scheduled_date: d.scheduledDate ?? null,
+      scheduled_time: d.scheduledTime ?? null,
       scheduled_end_date: d.scheduledEndDate ?? null,
       day_order: d.dayOrder ?? null,
       archived: !!d.archived,
@@ -356,6 +357,7 @@ async function loadAll() {
         status: Doc["status"];
         created_at: string;
         scheduled_date: string | null;
+        scheduled_time: string | null;
         day_order: number | null;
         archived: boolean;
         customer: unknown;
@@ -428,6 +430,7 @@ async function loadAll() {
         status: r.status as Doc["status"],
         createdAt: r.created_at,
         scheduledDate: r.scheduled_date ?? undefined,
+        scheduledTime: r.scheduled_time ?? undefined,
         scheduledEndDate: (r as { scheduled_end_date?: string | null }).scheduled_end_date ?? undefined,
         dayOrder: r.day_order ?? undefined,
         archived: r.archived,
