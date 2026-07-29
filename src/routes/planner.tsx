@@ -692,8 +692,11 @@ function MiniJob({ doc, iso }: { doc: Doc; iso?: string }) {
           span && !span.isFirst && "rounded-l-none border-l-0 border-dashed",
           span && !span.isLast && "rounded-r-none",
         )}
-        title={`${doc.customer.name || "—"} · ${doc.number}${span ? ` · Day ${span.idx} of ${span.total}` : ""} · ${jobSummary(doc)}`}>
+        title={`${doc.scheduledTime ? `${doc.scheduledTime} · ` : ""}${doc.customer.name || "—"} · ${doc.number}${span ? ` · Day ${span.idx} of ${span.total}` : ""} · ${jobSummary(doc)}`}>
         <PaymentIndicator doc={doc} />
+        {doc.scheduledTime && (!span || span.isFirst) && (
+          <span className="shrink-0 tabular-nums font-bold text-[9px] leading-none rounded bg-background/70 border px-0.5 py-px">{doc.scheduledTime}</span>
+        )}
         {span && <Link2 className="h-2.5 w-2.5 shrink-0 opacity-70" />}
         {doc.customer.name || doc.number}
         {span && <span className="ml-auto shrink-0 opacity-70 tabular-nums">{span.idx}/{span.total}</span>}
