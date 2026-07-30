@@ -70,12 +70,18 @@ const point = z.object({
 });
 
 export const routeDistance = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ from: point, to: point }).parse(d))
+  .inputValidator((d) =>
+    z.object({ from: point, to: point, stops: z.array(point).max(23).optional() }).parse(d),
+  )
   .handler(async ({ data }) => {
     const waypoint = (p: { address?: string; lat?: number; lng?: number }) =>
       p.lat != null && p.lng != null
         ? { location: { latLng: { latitude: p.lat, longitude: p.lng } } }
         : { address: p.address ?? "" };
+
+    const intermediates = (data.stops ?? [])
+      .filter((p) => (p.lat != null && p.lng != null) || (p.address && p.address.trim()))
+      .map(waypoint);
 
     const res = await fetch(`${GATEWAY}/routes/directions/v2:computeRoutes`, {
       method: "POST",
@@ -86,6 +92,7 @@ export const routeDistance = createServerFn({ method: "POST" })
       body: JSON.stringify({
         origin: waypoint(data.from),
         destination: waypoint(data.to),
+        ...(intermediates.length ? { intermediates } : {}),
         travelMode: "DRIVE",
         routingPreference: "TRAFFIC_UNAWARE",
       }),

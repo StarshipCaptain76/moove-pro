@@ -19,6 +19,9 @@ export function buildShareMessage(
     lines.push("");
     lines.push("Route:");
     if (doc.fromAddress) lines.push(`From: ${doc.fromAddress}`);
+    (doc.stops ?? []).forEach((s, i) => {
+      if (s.address) lines.push(`Stop ${i + 1}: ${s.address}`);
+    });
     if (doc.toAddress) lines.push(`To: ${doc.toAddress}`);
     if (doc.distanceKm) lines.push(`Distance: ${doc.distanceKm} km`);
   }
