@@ -81,7 +81,11 @@ export async function generatePdf(
   // route block (from/to)
   if (doc.fromAddress || doc.toAddress) {
     pdf.setFillColor(245, 245, 245);
-    const routeH = doc.distanceKm ? 20 : 16;
+    const stopList = (doc.stops ?? []).filter((s) => s.address);
+    const stopsText = stopList.map((s, i) => `${i + 1}. ${s.address}`).join("   ");
+    const stopsLines = stopsText ? (pdf.splitTextToSize(stopsText, W - 2 * M - 6) as string[]) : [];
+    const stopsH = stopsLines.length ? 4 + stopsLines.length * 4 : 0;
+    const routeH = (doc.distanceKm ? 20 : 16) + stopsH;
     pdf.rect(M, y, W - 2 * M, routeH, "F");
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(8);
@@ -95,6 +99,16 @@ export async function generatePdf(
     const toLines = pdf.splitTextToSize(doc.toAddress || "—", W / 2 - M - 6);
     pdf.text(fromLines, M + 3, y + 10);
     pdf.text(toLines, W / 2, y + 10);
+    if (stopsLines.length) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.setTextColor(80, 80, 80);
+      pdf.text("STOPS", M + 3, y + 15);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      pdf.setTextColor(20, 20, 20);
+      pdf.text(stopsLines, M + 16, y + 15);
+    }
     if (doc.distanceKm) {
       pdf.setFont("helvetica", "italic");
       pdf.setFontSize(8);
