@@ -107,10 +107,26 @@ function DocPage() {
   const removeStop = (i: number) => setStops(stops.filter((_, idx) => idx !== i));
   const moveStop = (i: number, dir: -1 | 1) => {
     const j = i + dir;
+    if (dir === -1 && i === 0) {
+      if (doc.fromAddress) return;
+      const s = stops[0];
+      upsertDoc({
+        ...doc,
+        fromAddress: s.address,
+        fromCoords: s.coords,
+        stops: stops.slice(1),
+      });
+      return;
+    }
     if (j < 0 || j >= stops.length) return;
     const next = [...stops];
     [next[i], next[j]] = [next[j], next[i]];
     setStops(next);
+  };
+
+  const promoteToFromFromTo = () => {
+    if (doc.fromAddress || !doc.toAddress) return;
+    upsertDoc({ ...doc, fromAddress: doc.toAddress, fromCoords: doc.toCoords, toAddress: "", toCoords: undefined });
   };
 
   const calcDistance = async () => {
