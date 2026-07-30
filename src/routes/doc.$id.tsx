@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod, type DocStatus, type JobCategory } from "@/lib/store";
 import { downloadPdf } from "@/lib/pdf";
-import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle, FileText } from "lucide-react";
+import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle, FileText, ArrowUp, ArrowDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -107,6 +107,9 @@ function DocPage() {
         data: {
           from: { address: doc.fromAddress, ...(doc.fromCoords ?? {}) },
           to: { address: doc.toAddress, ...(doc.toCoords ?? {}) },
+          stops: (doc.stops ?? [])
+            .filter((s) => s.address?.trim())
+            .map((s) => ({ address: s.address, ...(s.coords ?? {}) })),
         },
       });
       if (!r.km) return toast.error("No route found");
