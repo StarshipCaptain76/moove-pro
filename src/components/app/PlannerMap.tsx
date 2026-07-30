@@ -12,6 +12,7 @@ export interface PlannerMapJob {
   toAddress?: string;
   fromCoords?: { lat: number; lng: number };
   toCoords?: { lat: number; lng: number };
+  stopCoords?: Array<{ lat: number; lng: number }>;
 }
 
 declare global {
@@ -117,6 +118,7 @@ export function PlannerMap({ jobs, onOpen }: { jobs: PlannerMapJob[]; onOpen?: (
           pickup.addListener("click", () => openInfo(pickup, "Pickup", j.fromAddress));
 
           if (j.toCoords) {
+            const mids = (j.stopCoords ?? []).filter((c) => c && c.lat != null && c.lng != null);
             const drop = new google.maps.Marker({
               position: j.toCoords,
               map: mapRef.current,
@@ -127,8 +129,26 @@ export function PlannerMap({ jobs, onOpen }: { jobs: PlannerMapJob[]; onOpen?: (
             overlaysRef.current.push(drop);
             bounds.extend(j.toCoords);
 
+            mids.forEach((c, idx) => {
+              const stopMarker = new google.maps.Marker({
+                position: c,
+                map: mapRef.current,
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 6,
+                  fillColor: j.color,
+                  fillOpacity: 1,
+                  strokeColor: "#fff",
+                  strokeWeight: 2,
+                },
+                title: `${j.customer} — stop ${idx + 1}`,
+              });
+              overlaysRef.current.push(stopMarker);
+              bounds.extend(c);
+            });
+
             const line = new google.maps.Polyline({
-              path: [j.fromCoords!, j.toCoords],
+              path: [j.fromCoords!, ...mids, j.toCoords],
               map: mapRef.current,
               strokeColor: j.color,
               strokeOpacity: 0.85,
@@ -154,7 +174,7 @@ export function PlannerMap({ jobs, onOpen }: { jobs: PlannerMapJob[]; onOpen?: (
       })
       .catch((e) => console.error("[PlannerMap]", e));
     return () => { cancelled = true; };
-  }, [JSON.stringify(withCoords.map((j) => [j.id, j.date, j.color, j.fromCoords, j.toCoords]))]);
+  }, [JSON.stringify(withCoords.map((j) => [j.id, j.date, j.color, j.fromCoords, j.toCoords, j.stopCoords]))]);
 
   return (
     <div className="rounded-lg border overflow-hidden bg-muted">

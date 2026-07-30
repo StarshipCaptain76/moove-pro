@@ -75,6 +75,7 @@ function buildMapJobs(jobs: Doc[], from: Date): PlannerMapJob[] {
         toAddress: d.toAddress,
         fromCoords: d.fromCoords,
         toCoords: d.toCoords,
+        stopCoords: (d.stops ?? []).map((s) => s.coords).filter(Boolean) as Array<{ lat: number; lng: number }>,
       });
     }
   }

@@ -78,6 +78,12 @@ export interface Customer {
   taxNumber?: string;
 }
 
+export interface RouteStop {
+  id: string;
+  address: string;
+  coords?: { lat: number; lng: number };
+}
+
 export interface Doc {
   id: string;
   number: string;
@@ -100,6 +106,7 @@ export interface Doc {
   toAddress?: string;
   fromCoords?: { lat: number; lng: number };
   toCoords?: { lat: number; lng: number };
+  stops?: RouteStop[];
   distanceKm?: number;
   jobCategory?: JobCategory;
 }

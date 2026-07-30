@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore, newId, docTotals, fmtMoney, type LineItem, type PayMethod, type DocStatus, type JobCategory } from "@/lib/store";
 import { downloadPdf } from "@/lib/pdf";
-import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle, FileText } from "lucide-react";
+import { Trash2, Plus, MessageCircle, Mail, Download, Check, ArrowLeft, Truck, Calendar as CalendarIcon, Route as RouteIcon, Recycle, FileText, ArrowUp, ArrowDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -99,6 +99,20 @@ function DocPage() {
   const addKm = (km = 10) =>
     addItem({ description: "Transport (per km)", price: billing.ratePerKm, unit: "km", qty: km, isDistance: true });
 
+  const stops = doc.stops ?? [];
+  const setStops = (next: typeof stops) => upsertDoc({ ...doc, stops: next });
+  const addStop = () => setStops([...stops, { id: newId(), address: "" }]);
+  const updateStop = (i: number, patch: Partial<(typeof stops)[number]>) =>
+    setStops(stops.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  const removeStop = (i: number) => setStops(stops.filter((_, idx) => idx !== i));
+  const moveStop = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= stops.length) return;
+    const next = [...stops];
+    [next[i], next[j]] = [next[j], next[i]];
+    setStops(next);
+  };
+
   const calcDistance = async () => {
     if (!doc.fromAddress || !doc.toAddress) return toast.error("Set both addresses first");
     setCalcing(true);
@@ -107,6 +121,9 @@ function DocPage() {
         data: {
           from: { address: doc.fromAddress, ...(doc.fromCoords ?? {}) },
           to: { address: doc.toAddress, ...(doc.toCoords ?? {}) },
+          stops: (doc.stops ?? [])
+            .filter((s) => s.address?.trim())
+            .map((s) => ({ address: s.address, ...(s.coords ?? {}) })),
         },
       });
       if (!r.km) return toast.error("No route found");
@@ -261,6 +278,34 @@ function DocPage() {
                   placeholder="Search address…"
                   onChange={(v) => update({ fromAddress: v.address, fromCoords: v.coords })}
                 />
+              </div>
+              {stops.map((s, i) => (
+                <div className="col-span-2" key={s.id}>
+                  <Label>Stop {i + 1}</Label>
+                  <div className="flex items-start gap-1">
+                    <div className="flex-1 min-w-0">
+                      <AddressAutocomplete
+                        value={s.address}
+                        placeholder="Search address…"
+                        onChange={(v) => updateStop(i, { address: v.address, coords: v.coords })}
+                      />
+                    </div>
+                    <Button type="button" variant="outline" size="icon" disabled={i === 0} onClick={() => moveStop(i, -1)}>
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button type="button" variant="outline" size="icon" disabled={i === stops.length - 1} onClick={() => moveStop(i, 1)}>
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button type="button" variant="outline" size="icon" onClick={() => removeStop(i)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <div className="col-span-2">
+                <Button type="button" variant="outline" size="sm" onClick={addStop}>
+                  <Plus className="h-4 w-4 mr-1" /> Add stop
+                </Button>
               </div>
               <div className="col-span-2">
                 <Label>To address</Label>

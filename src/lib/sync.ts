@@ -196,6 +196,7 @@ export function pushDoc(d: Doc) {
       to_address: d.toAddress ?? null,
       from_coords: (d.fromCoords ?? null) as unknown as never,
       to_coords: (d.toCoords ?? null) as unknown as never,
+      stops: (d.stops ?? []) as unknown as never,
       distance_km: d.distanceKm ?? null,
       job_category: d.jobCategory ?? null,
     });
@@ -371,6 +372,7 @@ async function loadAll() {
         to_address: string | null;
         from_coords: unknown;
         to_coords: unknown;
+        stops: unknown;
         distance_km: number | string | null;
         job_category: string | null;
       }>("docs", uid),
@@ -445,6 +447,7 @@ async function loadAll() {
         toAddress: r.to_address ?? undefined,
         fromCoords: (r.from_coords as Doc["fromCoords"]) ?? undefined,
         toCoords: (r.to_coords as Doc["toCoords"]) ?? undefined,
+        stops: (r.stops as Doc["stops"]) ?? [],
         distanceKm: r.distance_km != null ? Number(r.distance_km) : undefined,
         jobCategory: (r.job_category as Doc["jobCategory"]) ?? undefined,
       }));

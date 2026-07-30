@@ -1,35 +1,34 @@
 ## Goal
 
-Let a job/quote/invoice optionally carry a start time, set a global "warn me X minutes before" setting, and get a device notification when a scheduled job is nearly due.
+On quotes and invoices, allow adding extra stops between the pickup (From) and drop-off (To) addresses, calculate the total distance across the full route, and let stops be reordered.
 
-## 1. Optional time on the document
+## What it looks like
 
-- Add an optional `scheduledTime` (HH:mm) alongside the existing scheduled date. Currently the docs table only stores `scheduled_date` — a new nullable `scheduled_time` column is needed, plus mapping in the sync layer.
-- In the document editor, next to the date picker, add a "Start time (optional)" control with a clear button.
-- Picker is roller-based, no typing: a bottom sheet with three snap-scroll wheel columns (hour 00–23, minute in 5-minute steps, plus a quick "Now / Clear" row). Same visual language as the existing date picker button (outline button showing e.g. "08:30" or "Set time").
-- Time shows on the planner job cards (agenda, week, month) before the customer name, and on the quote/invoice PDF line where the scheduled date already appears.
+In the Route card of the quote/invoice editor:
 
-## 2. Reminder lead time in Settings
+```text
+From:  [ 12 Main Rd, Stilbaai        ]
+Stop 1 [ 5 Beach Rd                  ] [↑] [↓] [x]
+Stop 2 [ Warehouse, Riversdale       ] [↑] [↓] [x]
+       [ + Add stop ]
+To:    [ 44 Church St, Mossel Bay    ] [Disposal site]
+       [ Calculate distance ]   38.4 km
+```
 
-- New "Reminders" card in Settings:
-  - Toggle: enable job reminders.
-  - Lead time chosen with a roller (5, 10, 15, 30, 45, 60, 90, 120 minutes) — no typing.
-  - Button to grant device notification permission, showing current status (granted / blocked / not asked).
-- Stored with the rest of the billing/company profile settings so it syncs to the cloud.
+- Each stop uses the same Google address autocomplete as From/To.
+- Up/down arrows move a stop in the route order; the x removes it.
+- Distance is calculated for From → Stop 1 → Stop 2 → To as one total, so reordering changes the total.
+- Jobs keep the simplified card (no route/distance), unchanged.
 
-## 3. Notification behaviour
+## Where stops appear
 
-- A small scheduler runs while the app is open: every 30s it checks jobs with a date+time today, and fires one notification per job when now is within the lead window and the job hasn't fired yet.
-- Uses the browser Notification API (title = customer name, body = job type + address), falling back to an in-app toast if permission isn't granted.
-- Fired reminders are remembered per document per day so the same job doesn't re-notify on every refresh or tab focus.
+- PDF: the route block lists From, each stop in order, then To, with the total distance.
+- WhatsApp/email share message: same ordered list.
+- Planner map: stops added as waypoints on the drawn route for that job.
 
 ## Technical notes
 
-- DB migration: `ALTER TABLE public.docs ADD COLUMN scheduled_time text` (nullable); no policy changes needed.
-- New `src/components/app/TimePicker.tsx` (wheel sheet) and `src/components/app/WheelSelect.tsx` shared by the settings lead-time roller.
-- New `src/lib/reminders.ts` holding the check loop; mounted once in `Shell.tsx` so it runs on every page.
-- Reminder settings extend `BillingSettings` in `src/lib/store.ts` (`remindersEnabled`, `reminderLeadMin`) and are pushed via the existing `pushCompanyProfile()` path.
-
-## Limitation to be aware of
-
-Web notifications only fire while the app is open in a browser tab (or installed to the home screen and running). True background push while the app is fully closed needs a service worker plus push service — not included here unless you want that as a follow-up.
+- New `stops jsonb not null default '[]'` column on `docs` (array of `{ address, coords? }`), with the existing owner-scoped RLS unchanged; add `stops?: Array<{address: string; coords?: {lat:number;lng:number}}>` to the `Doc` type and to the sync push/pull mapping in `src/lib/sync.ts`.
+- `routeDistance` in `src/lib/maps.functions.ts` gains an optional `intermediates` array, passed to the Routes API `intermediates` field (Routes API supports up to 25); returns the summed `distanceMeters` as today.
+- Editor changes in `src/routes/doc.$id.tsx`: stop list state driven off `doc.stops`, reorder via index swap, calculation passes stops through in order.
+- `src/lib/pdf.ts`, `src/lib/share-message.ts`, and `src/components/app/PlannerMap.tsx` read the ordered stops.

@@ -136,6 +136,7 @@ export type Database = {
           scheduled_end_date: string | null
           scheduled_time: string | null
           status: string
+          stops: Json
           to_address: string | null
           to_coords: Json | null
           type: string
@@ -163,6 +164,7 @@ export type Database = {
           scheduled_end_date?: string | null
           scheduled_time?: string | null
           status?: string
+          stops?: Json
           to_address?: string | null
           to_coords?: Json | null
           type: string
@@ -190,6 +192,7 @@ export type Database = {
           scheduled_end_date?: string | null
           scheduled_time?: string | null
           status?: string
+          stops?: Json
           to_address?: string | null
           to_coords?: Json | null
           type?: string
