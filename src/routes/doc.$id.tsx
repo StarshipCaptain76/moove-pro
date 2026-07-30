@@ -365,7 +365,13 @@ function DocPage() {
                   <RouteIcon className="h-4 w-4 mr-1" /> {calcing ? "Calculating…" : "Calculate distance"}
                 </Button>
                 {doc.distanceKm ? (
-                  <span className="text-muted-foreground">{doc.distanceKm} km</span>
+                  <span className="text-muted-foreground">
+                    {doc.distanceKm} km
+                    <span className="ml-2">
+                      · {fmtMoney(doc.distanceKm * billing.ratePerKm, billing.currency)}
+                      <span className="ml-1 text-xs">(est. trip value, not printed)</span>
+                    </span>
+                  </span>
                 ) : null}
               </div>
               </>)}
