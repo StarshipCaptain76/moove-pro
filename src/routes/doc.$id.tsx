@@ -107,10 +107,26 @@ function DocPage() {
   const removeStop = (i: number) => setStops(stops.filter((_, idx) => idx !== i));
   const moveStop = (i: number, dir: -1 | 1) => {
     const j = i + dir;
+    if (dir === -1 && i === 0) {
+      if (doc.fromAddress) return;
+      const s = stops[0];
+      upsertDoc({
+        ...doc,
+        fromAddress: s.address,
+        fromCoords: s.coords,
+        stops: stops.slice(1),
+      });
+      return;
+    }
     if (j < 0 || j >= stops.length) return;
     const next = [...stops];
     [next[i], next[j]] = [next[j], next[i]];
     setStops(next);
+  };
+
+  const promoteToFromFromTo = () => {
+    if (doc.fromAddress || !doc.toAddress) return;
+    upsertDoc({ ...doc, fromAddress: doc.toAddress, fromCoords: doc.toCoords, toAddress: "", toCoords: undefined });
   };
 
   const calcDistance = async () => {
@@ -290,7 +306,14 @@ function DocPage() {
                         onChange={(v) => updateStop(i, { address: v.address, coords: v.coords })}
                       />
                     </div>
-                    <Button type="button" variant="outline" size="icon" disabled={i === 0} onClick={() => moveStop(i, -1)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      title={i === 0 && !doc.fromAddress ? "Move up into From address" : "Move up"}
+                      disabled={i === 0 && !!doc.fromAddress}
+                      onClick={() => moveStop(i, -1)}
+                    >
                       <ArrowUp className="h-4 w-4" />
                     </Button>
                     <Button type="button" variant="outline" size="icon" disabled={i === stops.length - 1} onClick={() => moveStop(i, 1)}>
@@ -309,10 +332,12 @@ function DocPage() {
               </div>
               <div className="col-span-2">
                 <Label>To address</Label>
-                <AddressAutocomplete
-                  value={doc.toAddress ?? ""}
-                  placeholder="Search address…"
-                  onChange={(v) => update({ toAddress: v.address, toCoords: v.coords })}
+                <div className="flex items-start gap-1">
+                  <div className="flex-1 min-w-0">
+                    <AddressAutocomplete
+                      value={doc.toAddress ?? ""}
+                      placeholder="Search address…"
+                      onChange={(v) => update({ toAddress: v.address, toCoords: v.coords })}
                   extraButton={
                     <Button
                       type="button"
@@ -326,7 +351,14 @@ function DocPage() {
                       <Recycle className="h-4 w-4 mr-1" /> Disposal
                     </Button>
                   }
-                />
+                    />
+                  </div>
+                  {!doc.fromAddress && !!doc.toAddress && (
+                    <Button type="button" variant="outline" size="icon" title="Move up into From address" onClick={promoteToFromFromTo}>
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="col-span-2 flex items-center gap-2 text-sm">
                 <Button type="button" size="sm" variant="secondary" onClick={calcDistance} disabled={calcing}>
