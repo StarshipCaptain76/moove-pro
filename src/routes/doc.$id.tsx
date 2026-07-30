@@ -338,14 +338,6 @@ function DocPage() {
                       value={doc.toAddress ?? ""}
                       placeholder="Search address…"
                       onChange={(v) => update({ toAddress: v.address, toCoords: v.coords })}
-                    />
-                  </div>
-                  {!doc.fromAddress && !!doc.toAddress && (
-                    <Button type="button" variant="outline" size="icon" title="Move up into From address" onClick={promoteToFromFromTo}>
-                      <ArrowUp className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
                   extraButton={
                     <Button
                       type="button"
@@ -359,7 +351,14 @@ function DocPage() {
                       <Recycle className="h-4 w-4 mr-1" /> Disposal
                     </Button>
                   }
-                />
+                    />
+                  </div>
+                  {!doc.fromAddress && !!doc.toAddress && (
+                    <Button type="button" variant="outline" size="icon" title="Move up into From address" onClick={promoteToFromFromTo}>
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="col-span-2 flex items-center gap-2 text-sm">
                 <Button type="button" size="sm" variant="secondary" onClick={calcDistance} disabled={calcing}>
