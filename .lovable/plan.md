@@ -1,34 +1,44 @@
 ## Goal
 
-On quotes and invoices, allow adding extra stops between the pickup (From) and drop-off (To) addresses, calculate the total distance across the full route, and let stops be reordered.
+Produce a single markdown file listing every change made since 21 July 2026, in chronological order, written as phased, copy-paste-able instructions so the same changes can be applied to a similar project.
 
-## What it looks like
+## Output
 
-In the Route card of the quote/invoice editor:
+`/mnt/documents/moove-updates-since-jul-21.md` (also saved into the repo as `docs/updates-since-jul-21.md` so it stays with the project).
+
+## Structure of the file
 
 ```text
-From:  [ 12 Main Rd, Stilbaai        ]
-Stop 1 [ 5 Beach Rd                  ] [↑] [↓] [x]
-Stop 2 [ Warehouse, Riversdale       ] [↑] [↓] [x]
-       [ + Add stop ]
-To:    [ 44 Church St, Mossel Bay    ] [Disposal site]
-       [ Calculate distance ]   38.4 km
+# MOOVE — updates since 21 July 2026
+
+## How to use
+One phase at a time; each phase is a self-contained prompt.
+
+## Phase 1 — <theme>
+Date: 2026-07-2X
+Prompt: "<verbatim-style instruction to paste into the other project>"
+What changes: bullet list of behaviour
+Files/areas touched: ...
+Database: SQL if any
+Verify: what to click/see to confirm
 ```
 
-- Each stop uses the same Google address autocomplete as From/To.
-- Up/down arrows move a stop in the route order; the x removes it.
-- Distance is calculated for From → Stop 1 → Stop 2 → To as one total, so reordering changes the total.
-- Jobs keep the simplified card (no route/distance), unchanged.
+Phases follow the real chronological order of the work, grouped only where consecutive edits belong to one feature (e.g. the stops feature and its follow-ups).
 
-## Where stops appear
+## Phases to be documented (chronological)
 
-- PDF: the route block lists From, each stop in order, then To, with the total distance.
-- WhatsApp/email share message: same ordered list.
-- Planner map: stops added as waypoints on the drawn route for that job.
+1. Planner month view — unpaid shown as a small red dot instead of a badge that hides job details.
+2. Job card simplification — job type hides items/totals/deposit/route/share; notes relabelled "What needs to be done".
+3. Job card — optional phone and email fields restored.
+4. Signed-out gate in the app shell — no data, no nav, "Sign in required" prompt.
+5. Optional start time + reminders — `scheduled_time` column, `WheelSelect`/`TimePicker` roller components, reminder lead-time setting, web notification scheduler.
+6. Start time shown on Agenda, Week and Month planner cards.
+7. Reorderable extra route stops — `stops` jsonb column, sync mapping, Routes API intermediates, editor stop list with add/remove/reorder, PDF + share message + planner map.
+8. Promote a stop (or the To address) into an empty From field.
+9. Distance calculation shows estimated trip value at the settings per-km rate, on-screen only (never printed on quote/invoice).
 
 ## Technical notes
 
-- New `stops jsonb not null default '[]'` column on `docs` (array of `{ address, coords? }`), with the existing owner-scoped RLS unchanged; add `stops?: Array<{address: string; coords?: {lat:number;lng:number}}>` to the `Doc` type and to the sync push/pull mapping in `src/lib/sync.ts`.
-- `routeDistance` in `src/lib/maps.functions.ts` gains an optional `intermediates` array, passed to the Routes API `intermediates` field (Routes API supports up to 25); returns the summed `distanceMeters` as today.
-- Editor changes in `src/routes/doc.$id.tsx`: stop list state driven off `doc.stops`, reorder via index swap, calculation passes stops through in order.
-- `src/lib/pdf.ts`, `src/lib/share-message.ts`, and `src/components/app/PlannerMap.tsx` read the ordered stops.
+- Content sourced from the chat history from 21 July onward plus the current state of the touched files, so each phase's SQL and behaviour description matches what actually shipped.
+- SQL is written as idempotent `alter table ... add column if not exists` statements with the existing owner-scoped RLS left unchanged.
+- No application code changes — this task only writes the markdown file.
