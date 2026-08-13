@@ -1,0 +1,85 @@
+INSERT INTO public.expenses (id,owner_user_id,date,category,vendor,description,amount,payment_method,notes,created_at)
+SELECT 'bank_'||replace(d::text,'-','')||'_'||slug, '2dfaa788-9854-40b0-a0d8-a5351b91b73e'::uuid, d, cat, ven, des, amt, 'eft', 'Imported from FNB statement 63216547993', (d + time '12:00') at time zone 'UTC'
+FROM (VALUES
+('2026-07-27'::date,'ATM Cash Withdrawal','Other','Cash withdrawal',300.00,'atm'),
+('2026-07-27','Smart-AP Prepaid','Data/Airtime','Airtime',110.00,'airtime'),
+('2026-07-29','Engen Stilbaai','Diesel/Fuel','Fuel',1000.00,'engen'),
+('2026-07-29','S2S Sweet and Tobacos','Food','Refreshments',154.00,'s2s'),
+('2026-07-29','FlySafair','Other','Flight booking',111.00,'flysafair'),
+('2026-07-29','Nadia','Labour','Labour payment',10000.00,'nadia'),
+('2026-07-30','Engen Riversdale','Diesel/Fuel','Fuel',171.85,'engen'),
+('2026-07-30','Dawie & Julius','Other','Loan repayment',7500.00,'loan'),
+('2026-07-30','Dylan FNB','Other','Owner drawings',800.00,'drawings'),
+('2026-07-30','Smart-AP Prepaid','Data/Airtime','Airtime',110.00,'airtime'),
+('2026-07-31','FNB','Bank Fees','Service fees',138.89,'servicefee'),
+('2026-07-31','FNB','Bank Fees','Monthly account fee',102.00,'acctfee'),
+('2026-07-31','Tani Supermarket','Food','Groceries',58.00,'tani'),
+('2026-08-01','Engen Stilbaai','Diesel/Fuel','Fuel',1000.00,'engen'),
+('2026-08-01','Dylan FNB','Other','Owner drawings',600.00,'drawings'),
+('2026-08-03','Engen Stilbaai','Diesel/Fuel','Fuel',57.80,'engen'),
+('2026-08-03','Nadia','Labour','Labour payment',1000.00,'nadia'),
+('2026-08-03','Dylan FNB','Other','Owner drawings',600.00,'drawings1'),
+('2026-08-03','Dylan FNB','Other','Owner drawings',300.00,'drawings2'),
+('2026-08-04','Engen Stilbaai','Diesel/Fuel','Fuel',2047.62,'engen'),
+('2026-08-04','Why Not Market (Yoco)','Food','Meals',220.00,'yoco1'),
+('2026-08-04','Kruisrivier (Yoco)','Food','Meals',100.00,'yoco2'),
+('2026-08-04','Engen Stilbaai','Diesel/Fuel','Fuel',93.70,'engen2'),
+('2026-08-04','Sofie Food','Food','Meals',50.00,'sofie'),
+('2026-08-04','Tani Nex Trading','Food','Refreshments',44.00,'tani'),
+('2026-08-04','Ruwaydas Kitchen','Food','Meals',20.00,'ruwayda'),
+('2026-08-05','Tani Supermarket','Food','Groceries',296.00,'tani'),
+('2026-08-05','Droevlakte Stilbaai','Diesel/Fuel','Fuel',100.00,'droev'),
+('2026-08-05','Main Road','Other','Purchase',200.00,'mainroad'),
+('2026-08-05','Smart-AP Prepaid','Data/Airtime','Airtime',95.00,'airtime'),
+('2026-08-06','Tyremart Still Bay','Maintenance','Tyres',2740.00,'tyremart'),
+('2026-08-06','Uniik Restaurant','Entertainment','Client entertainment',500.00,'uniik'),
+('2026-08-06','OK Foods Stilbaai','Food','Groceries',324.93,'okfoods'),
+('2026-08-06','Tani Nex Trading','Food','Refreshments',87.98,'tani'),
+('2026-08-06','Engen Stilbaai','Diesel/Fuel','Fuel',26.90,'engen'),
+('2026-08-06','Smart-AP Prepaid','Data/Airtime','Airtime',95.00,'airtime'),
+('2026-08-07','Engen Stilbaai','Diesel/Fuel','Fuel',1000.00,'engen1'),
+('2026-08-07','Engen Stilbaai','Diesel/Fuel','Fuel',500.00,'engen2'),
+('2026-08-07','FlySafair','Other','Flight booking',5311.58,'flysafair'),
+('2026-08-07','Spar Stilbaai','Food','Groceries',163.66,'spar1'),
+('2026-08-07','Engen Stilbaai','Diesel/Fuel','Fuel',91.80,'engen3'),
+('2026-08-07','Spar Stilbaai','Food','Groceries',16.99,'spar2'),
+('2026-08-08','Steyns Boumateriaal','Maintenance','Materials',120.41,'steyns'),
+('2026-08-08','Engen Stilbaai','Diesel/Fuel','Fuel',113.60,'engen1'),
+('2026-08-08','Engen Stilbaai','Diesel/Fuel','Fuel',35.90,'engen2'),
+('2026-08-11','Engen Stilbaai','Diesel/Fuel','Fuel',832.24,'engen1'),
+('2026-08-11','Tani Nex Trading','Food','Refreshments',116.98,'tani'),
+('2026-08-11','S2S Burgstories','Food','Meals',116.00,'s2s1'),
+('2026-08-11','S2S Tani Nex Trading','Food','Refreshments',116.00,'s2s2'),
+('2026-08-11','Engen Stilbaai','Diesel/Fuel','Fuel',108.60,'engen2'),
+('2026-08-11','Engen Stilbaai','Diesel/Fuel','Fuel',101.90,'engen3'),
+('2026-08-11','Droevlakte Stilbaai','Diesel/Fuel','Fuel',100.00,'droev'),
+('2026-08-11','S2S Burgstories','Food','Meals',53.00,'s2s3'),
+('2026-08-11','Spar Stilbaai','Food','Groceries',35.98,'spar'),
+('2026-08-11','ATM Cash Withdrawal','Other','Cash withdrawal',150.00,'atm'),
+('2026-08-12','Droevlakte Stilbaai','Diesel/Fuel','Fuel',181.63,'droev'),
+('2026-08-13','Dylan FNB','Other','Owner drawings',700.00,'drawings')
+) t(d,ven,cat,des,amt,slug)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.docs (id,owner_user_id,number,type,status,created_at,paid_at,archived,customer,items,deposit_pct,deposit_paid,payment_method,notes)
+SELECT 'bank_inv_'||replace(d::text,'-','')||'_'||num, '2dfaa788-9854-40b0-a0d8-a5351b91b73e'::uuid, 'INV-'||num, 'invoice','paid',(d + time '12:00') at time zone 'UTC',(d + time '12:00') at time zone 'UTC', true,
+jsonb_build_object('id','bank_c_'||num,'name',nm,'phone','','email',''),
+jsonb_build_array(jsonb_build_object('id','bank_i_'||num,'description',des,'qty',1,'price',amt,'unit','job')),
+0,false,'eft','Imported from FNB statement 63216547993'
+FROM (VALUES
+('2026-07-29'::date,'Pierre Grimbeek',10000.00,'Moving job','1281'),
+('2026-07-30','Beau',1400.00,'Moving job','1282'),
+('2026-07-31','Cash banked (Moove transfer)',8000.00,'Cash income banked - undeclared job','1283'),
+('2026-07-31','Cash banked (Moove transfer)',700.00,'Cash income banked - undeclared job','1284'),
+('2026-08-01','Cash banked (Moove transfer)',3000.00,'Cash income banked - undeclared job','1285'),
+('2026-08-03','C Quick',1200.00,'Moving job','1286'),
+('2026-08-05','Duntrune Beach House',1300.00,'Moving job','1287'),
+('2026-08-05','Pierre Grimbeek',5182.00,'Moving job','1288'),
+('2026-08-06','Cash banked (Moove transfer)',1300.00,'Cash income banked - undeclared job','1289'),
+('2026-08-06','Vuilus (0764495955)',650.00,'Rubble removal','1290'),
+('2026-08-08','Suzi',850.00,'Petrol recovery','1291')
+) t(d,nm,amt,des,num)
+ON CONFLICT (id) DO NOTHING;
+
+UPDATE public.docs SET status='paid', paid_at='2026-07-28T12:00:00Z', payment_method='eft' WHERE number='INV-1269' AND customer->>'name' ILIKE 'Elsab%';
+UPDATE public.docs SET status='paid', paid_at='2026-08-07T12:00:00Z', payment_method='eft' WHERE number='INV-1277';
