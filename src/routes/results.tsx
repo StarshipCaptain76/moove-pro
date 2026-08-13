@@ -297,28 +297,69 @@ function ResultsPage() {
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-3">
-        <Stat label="Revenue" v={fmtMoney(revenue, billing.currency)} delta={delta(revenue, revenuePrev)} />
-        <Stat label="Expenses" v={fmtMoney(totalExp, billing.currency)} delta={delta(totalExp, totalExpPrev)} invert />
-        <Stat label="Gross Profit" v={fmtMoney(grossProfit, billing.currency)} delta={delta(grossProfit, grossProfitPrev)} sub="excl. salary/personal" />
-        <Stat label="Net Profit" v={fmtMoney(net, billing.currency)} delta={delta(net, netPrev)} />
-        <Stat label="Margin" v={`${margin.toFixed(1)}%`} delta={delta(margin, marginPrev, true)} />
+        <Stat label="Revenue" v={fmtMoney(revenue, billing.currency)} delta={delta(revenue, revenuePrev)} yoy={yoyDelta(revenue, revenueYoY)} />
+        <Stat label="Expenses" v={fmtMoney(totalExp, billing.currency)} delta={delta(totalExp, totalExpPrev)} yoy={yoyDelta(totalExp, totalExpYoY)} invert />
+        <Stat label="Gross Profit" v={fmtMoney(grossProfit, billing.currency)} delta={delta(grossProfit, grossProfitPrev)} yoy={yoyDelta(grossProfit, grossProfitYoY)} sub="excl. salary/personal" />
+        <Stat label="Net Profit" v={fmtMoney(net, billing.currency)} delta={delta(net, netPrev)} yoy={yoyDelta(net, netYoY)} />
+        <Stat label="Margin" v={`${margin.toFixed(1)}%`} delta={delta(margin, marginPrev, true)} yoy={yoyDelta(margin, marginYoY, true)} />
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 mb-4">
-        <Stat label="Invoices Paid" v={String(paidCount)} delta={delta(paidCount, paidCountPrev, true)} />
-        <Stat label="Avg Invoice" v={fmtMoney(avg, billing.currency)} delta={delta(avg, avgPrev)} />
+        <Stat label="Invoices Paid" v={String(paidCount)} delta={delta(paidCount, paidCountPrev, true)} yoy={yoyDelta(paidCount, paidCountYoY, true)} />
+        <Stat label="Avg Invoice" v={fmtMoney(avg, billing.currency)} delta={delta(avg, avgPrev)} yoy={yoyDelta(avg, avgYoY)} />
         <Stat label="Overdue" v={String(overdueCount)} sub="unpaid, past date" />
       </div>
 
+      {hasYoY && (
+        <p className="text-[10px] text-muted-foreground -mt-2 mb-3">
+          YoY compares against {yoyLabel}.
+        </p>
+      )}
+
+      {fcRevenue && fcExpenses && (
+        <Card className="p-3 sm:p-4 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-sm">Forecast to period end</h3>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {fcRevenue.basis} · {fcRevenue.confidence} confidence
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <Projected label="Revenue" toDate={fcRevenue.toDate} projected={fcRevenue.projected} cur={billing.currency} />
+            <Projected label="Expenses" toDate={fcExpenses.toDate} projected={fcExpenses.projected} cur={billing.currency} />
+            <Projected label="Net" toDate={fcRevenue.toDate - fcExpenses.toDate} projected={fcNet} cur={billing.currency} />
+          </div>
+          <div className="mt-2 h-1.5 bg-muted rounded overflow-hidden">
+            <div className="h-full bg-primary rounded" style={{ width: `${Math.round(fcRevenue.completion * 100)}%` }} />
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Period typically {Math.round(fcRevenue.completion * 100)}% complete by today, based on the same period in prior years.
+          </p>
+        </Card>
+      )}
+
       <div className="space-y-3">
-        <ChartCard title={`Revenue trend (${bucket === "day" ? "daily" : bucket === "month" ? "monthly" : "yearly"})`}>
+        <ChartCard
+          title={`Revenue trend (${bucket === "day" ? "daily" : bucket === "month" ? "monthly" : "yearly"})`}
+          action={
+            <button
+              type="button"
+              onClick={() => setShowYoY((v) => !v)}
+              className={`px-2 h-7 rounded-full text-[10px] border transition-colors ${showYoY ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}
+            >
+              YoY
+            </button>
+          }
+        >
           <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={cashflow} margin={{ left: -20, right: 8 }}>
+            <ComposedChart data={chartData} margin={{ left: -20, right: 8 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v: number) => fmtMoney(v, billing.currency)} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="Revenue" fill="#E11D2E" />
+              <Bar dataKey="Revenue" stackId="rev" fill="#E11D2E" />
+              {fcRevenue && <Bar dataKey="Forecast" stackId="rev" fill="#E11D2E" fillOpacity={0.28} />}
+              {showYoY && <Line dataKey="Rev LY" stroke="#6B6B6B" strokeWidth={2} strokeDasharray="4 3" dot={false} />}
               <Line dataKey="Salary" stroke="#0A0A0A" strokeWidth={2} dot={{ r: 3 }} />
             </ComposedChart>
           </ResponsiveContainer>
@@ -334,6 +375,8 @@ function ResultsPage() {
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="Revenue" fill="#16A34A" />
               <Bar dataKey="Expenses" fill="#E11D2E" />
+              {showYoY && <Line dataKey="Rev LY" stroke="#16A34A" strokeWidth={2} strokeDasharray="4 3" dot={false} />}
+              {showYoY && <Line dataKey="Exp LY" stroke="#E11D2E" strokeWidth={2} strokeDasharray="4 3" dot={false} />}
               <Line dataKey="Net" stroke="#0A0A0A" strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
