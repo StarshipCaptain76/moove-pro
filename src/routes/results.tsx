@@ -15,6 +15,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Download, TrendingDown, TrendingUp } from "lucide-react";
 import { RangePicker, resolveRange, previousRange, type RangeValue } from "@/components/app/RangePicker";
+import { sameRangeYearsAgo, weightedForecast } from "@/lib/forecast";
+import { subYears } from "date-fns";
 
 export const Route = createFileRoute("/results")({
   head: () => ({
@@ -54,12 +56,16 @@ function ResultsPage() {
   const { from, to, label } = useMemo(() => resolveRange(range), [range]);
   const prev = useMemo(() => previousRange(from, to), [from, to]);
   const days = Math.max(1, differenceInCalendarDays(to, from) + 1);
+  const yoy = useMemo(() => sameRangeYearsAgo(from, to, 1), [from, to]);
+  const [showYoY, setShowYoY] = useState(true);
 
   const paidAll = useMemo(() => docs.filter((d) => d.status === "paid" && d.paidAt), [docs]);
   const paid = useMemo(() => paidAll.filter((d) => inRange(d.paidAt, from, to)), [paidAll, from, to]);
   const paidPrev = useMemo(() => paidAll.filter((d) => inRange(d.paidAt, prev.from, prev.to)), [paidAll, prev.from, prev.to]);
   const exp = useMemo(() => expenses.filter((e) => inRange(e.date, from, to)), [expenses, from, to]);
   const expPrev = useMemo(() => expenses.filter((e) => inRange(e.date, prev.from, prev.to)), [expenses, prev.from, prev.to]);
+  const paidYoY = useMemo(() => paidAll.filter((d) => inRange(d.paidAt, yoy.from, yoy.to)), [paidAll, yoy]);
+  const expYoY = useMemo(() => expenses.filter((e) => inRange(e.date, yoy.from, yoy.to)), [expenses, yoy]);
 
   const sumRev = (arr: Doc[]) => arr.reduce((s, d) => s + docTotals(d, billing.vatPct).total, 0);
   const sumExp = (arr: Expense[]) => arr.reduce((s, e) => s + (e.amount || 0), 0);
@@ -97,6 +103,20 @@ function ResultsPage() {
   const paidCountPrev = paidPrev.length;
   const avg = paidCount ? revenue / paidCount : 0;
   const avgPrev = paidCountPrev ? revenuePrev / paidCountPrev : 0;
+
+  // ---- Year on year (same calendar window, one year back) ----
+  const revenueYoY = sumRev(paidYoY);
+  const totalExpYoY = sumExp(expYoY);
+  const salaryYoY = sumSalary(expYoY);
+  const grossProfitYoY = revenueYoY - (totalExpYoY - salaryYoY);
+  const netYoY = revenueYoY - totalExpYoY;
+  const marginYoY = revenueYoY > 0 ? (netYoY / revenueYoY) * 100 : 0;
+  const paidCountYoY = paidYoY.length;
+  const avgYoY = paidCountYoY ? revenueYoY / paidCountYoY : 0;
+  const hasYoY = paidYoY.length > 0 || expYoY.length > 0;
+  const yoyLabel = `${format(yoy.from, "d MMM yy")} – ${format(yoy.to, "d MMM yy")}`;
+  const yoyDelta = (cur: number, past: number, isCount = false) =>
+    hasYoY && past !== 0 ? delta(cur, past, isCount) : null;
 
   const now = new Date();
   const outstanding = docs
