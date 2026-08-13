@@ -190,7 +190,7 @@ function StatusPanel({ title, docs, keys }: { title: string; docs: Doc[]; keys: 
             <li key={k}>
               <Link
                 to="/docs"
-                search={{ bucket: k }}
+                search={{ type: undefined, status: undefined, bucket: k }}
                 className="flex items-center justify-between gap-2 px-3 py-2.5 active:bg-muted transition-colors"
               >
                 <span className="text-xs sm:text-sm uppercase tracking-wide">{bucketLabel[k]}</span>
