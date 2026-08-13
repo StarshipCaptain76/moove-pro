@@ -1,44 +1,46 @@
-## Goal
+# Results: Year-on-year comparison + weighted forecast
 
-Produce a single markdown file listing every change made since 21 July 2026, in chronological order, written as phased, copy-paste-able instructions so the same changes can be applied to a similar project.
+Add two things to the Revenue & Reports page: a same-period-last-year comparison, and a forward forecast for the current month/period that is weighted by what the same period did in previous years.
 
-## Output
+Data supports it: paid invoices run from Nov 2024 to today, and expenses exist for every month since Nov 2024 — one full year-over-year overlap.
 
-`/mnt/documents/moove-updates-since-jul-21.md` (also saved into the repo as `docs/updates-since-jul-21.md` so it stays with the project).
+## 1. Year-on-year on the KPI cards
 
-## Structure of the file
+Each stat card (Revenue, Expenses, Gross Profit, Net Profit, Margin, Invoices Paid, Avg Invoice) gets a second, smaller delta line:
 
 ```text
-# MOOVE — updates since 21 July 2026
-
-## How to use
-One phase at a time; each phase is a self-contained prompt.
-
-## Phase 1 — <theme>
-Date: 2026-07-2X
-Prompt: "<verbatim-style instruction to paste into the other project>"
-What changes: bullet list of behaviour
-Files/areas touched: ...
-Database: SQL if any
-Verify: what to click/see to confirm
+REVENUE
+R 42 300
++12%  vs prev period
+-4%   vs Aug 2025 (YoY)
 ```
 
-Phases follow the real chronological order of the work, grouped only where consecutive edits belong to one feature (e.g. the stops feature and its follow-ups).
+The YoY window is the same calendar range shifted back exactly one year. If there is no data in that window, the YoY line is hidden rather than showing "new".
 
-## Phases to be documented (chronological)
+## 2. Year-on-year overlay on the trend charts
 
-1. Planner month view — unpaid shown as a small red dot instead of a badge that hides job details.
-2. Job card simplification — job type hides items/totals/deposit/route/share; notes relabelled "What needs to be done".
-3. Job card — optional phone and email fields restored.
-4. Signed-out gate in the app shell — no data, no nav, "Sign in required" prompt.
-5. Optional start time + reminders — `scheduled_time` column, `WheelSelect`/`TimePicker` roller components, reminder lead-time setting, web notification scheduler.
-6. Start time shown on Agenda, Week and Month planner cards.
-7. Reorderable extra route stops — `stops` jsonb column, sync mapping, Routes API intermediates, editor stop list with add/remove/reorder, PDF + share message + planner map.
-8. Promote a stop (or the To address) into an empty From field.
-9. Distance calculation shows estimated trip value at the settings per-km rate, on-screen only (never printed on quote/invoice).
+The revenue trend and cash-flow charts get an optional dashed "Last year" line, toggled by a small "YoY" switch on the chart header. Buckets align by position (day 1 vs day 1, Jan vs Jan), so a shifted-by-one-year series plots cleanly against the current one.
+
+## 3. Forecast card (weighted by same-period history)
+
+A new "Forecast" card appears when the selected range includes today (i.e. the period is still running):
+
+- Pace to date: revenue and expenses so far in the period.
+- Seasonal projection: scale the to-date figure by how much of the period was typically complete at this point in prior years' equivalent periods.
+- Weighting: prior years are blended with an exponential weight (most recent year weighted highest), and a simple flat pro-rata projection is folded in as a fallback so a single sparse prior year cannot dominate.
+- Output: projected period revenue, expenses and net, each shown with a confidence hint (High / Medium / Low) based on how many prior periods contributed.
+- If there is no comparable prior period, fall back to straight pro-rata and label it "linear pace, no history".
+
+The projection is also drawn on the revenue trend chart as a faded bar for the remaining buckets.
 
 ## Technical notes
 
-- Content sourced from the chat history from 21 July onward plus the current state of the touched files, so each phase's SQL and behaviour description matches what actually shipped.
-- SQL is written as idempotent `alter table ... add column if not exists` statements with the existing owner-scoped RLS left unchanged.
-- No application code changes — this task only writes the markdown file.
+- New helper module `src/lib/forecast.ts`:
+  - `sameRangeLastYear(from, to)` — one-year-shifted window.
+  - `seasonalFactors(history, bucket)` — share-of-period completion curve from prior equivalent periods.
+  - `weightedForecast({ toDate, elapsedFraction, priorYears })` — exponentially weighted blend returning `{ projected, confidence, basis }`.
+- `src/routes/results.tsx`: compute YoY aggregates using the existing `inRange` / `sumRev` / `sumExp` helpers on the shifted window; extend `Stat` to accept an optional second delta; add the YoY toggle state and the forecast card.
+- Forecast uses all docs/expenses in the store (not just the filtered window), so no query or schema changes are needed.
+- CSV export gains a "YoY" and "Forecast" block mirroring the on-screen figures.
+
+No database changes.
