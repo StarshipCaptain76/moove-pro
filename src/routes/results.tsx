@@ -238,6 +238,27 @@ function ResultsPage() {
     lines.push(`Invoices Paid,${paidCount}`);
     lines.push(`Avg Invoice,${avg.toFixed(2)}`);
     lines.push("");
+    if (hasYoY) {
+      lines.push(`Year on year (${yoyLabel})`);
+      lines.push("Metric,This period,Same period last year,Change %");
+      const row = (n: string, a: number, b: number) =>
+        lines.push([n, a.toFixed(2), b.toFixed(2), b ? (((a - b) / Math.abs(b)) * 100).toFixed(1) : ""].map(esc).join(","));
+      row("Revenue", revenue, revenueYoY);
+      row("Expenses", totalExp, totalExpYoY);
+      row("Gross Profit", grossProfit, grossProfitYoY);
+      row("Net Profit", net, netYoY);
+      row("Invoices Paid", paidCount, paidCountYoY);
+      row("Avg Invoice", avg, avgYoY);
+      lines.push("");
+    }
+    if (fcRevenue && fcExpenses) {
+      lines.push("Forecast (period end)");
+      lines.push("Metric,To date,Projected,Basis,Confidence");
+      lines.push(["Revenue", fcRevenue.toDate.toFixed(2), fcRevenue.projected.toFixed(2), fcRevenue.basis, fcRevenue.confidence].map(esc).join(","));
+      lines.push(["Expenses", fcExpenses.toDate.toFixed(2), fcExpenses.projected.toFixed(2), fcExpenses.basis, fcExpenses.confidence].map(esc).join(","));
+      lines.push(["Net", (fcRevenue.toDate - fcExpenses.toDate).toFixed(2), fcNet.toFixed(2), "", ""].map(esc).join(","));
+      lines.push("");
+    }
     lines.push("Paid Invoices");
     lines.push("Number,Date Paid,Customer,Method,Total");
     paid.forEach((d) => lines.push([
