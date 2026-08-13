@@ -480,13 +480,15 @@ function delta(cur: number, prev: number, isCount = false) {
 }
 
 function Stat({
-  label, v, delta, sub, invert,
+  label, v, delta, yoy, sub, invert,
 }: {
   label: string; v: string;
   delta?: { pct: number | null; up: boolean; raw: number; isCount: boolean } | null;
+  yoy?: { pct: number | null; up: boolean; raw: number; isCount: boolean } | null;
   sub?: string; invert?: boolean;
 }) {
   const good = delta ? (invert ? !delta.up : delta.up) : false;
+  const yoyGood = yoy ? (invert ? !yoy.up : yoy.up) : false;
   return (
     <Card className="p-3 sm:p-4">
       <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
@@ -497,10 +499,34 @@ function Stat({
           {delta.pct == null ? "new" : `${delta.pct >= 0 ? "+" : ""}${delta.pct.toFixed(0)}%`}
         </div>
       )}
+      {yoy && (
+        <div className={`text-[10px] mt-0.5 flex items-center gap-0.5 ${yoyGood ? "text-green-600" : "text-red-600"} opacity-80`}>
+          {yoy.up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+          {yoy.pct == null ? "new" : `${yoy.pct >= 0 ? "+" : ""}${yoy.pct.toFixed(0)}%`}
+          <span className="text-muted-foreground ml-0.5">YoY</span>
+        </div>
+      )}
       {sub && <div className="text-[10px] text-muted-foreground mt-1">{sub}</div>}
     </Card>
   );
 }
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return <Card className="p-3 sm:p-4"><h3 className="font-semibold text-sm mb-2">{title}</h3>{children}</Card>;
+function Projected({ label, toDate, projected, cur }: { label: string; toDate: number; projected: number; cur: string }) {
+  return (
+    <div className="rounded-lg border p-2">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-base sm:text-lg font-display truncate">{fmtMoney(projected, cur)}</div>
+      <div className="text-[10px] text-muted-foreground truncate">{fmtMoney(toDate, cur)} to date</div>
+    </div>
+  );
+}
+function ChartCard({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <Card className="p-3 sm:p-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-semibold text-sm">{title}</h3>
+        {action}
+      </div>
+      {children}
+    </Card>
+  );
 }
