@@ -17,7 +17,6 @@ import { Route as DocsRouteImport } from './routes/docs'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocIdRouteImport } from './routes/doc.$id'
-import { Route as DocRouteImport } from './routes/doc.'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -59,11 +58,6 @@ const DocIdRoute = DocIdRouteImport.update({
   path: '/doc/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocRoute = DocRouteImport.update({
-  id: '/doc/',
-  path: '/doc/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -73,7 +67,6 @@ export interface FileRoutesByFullPath {
   '/planner': typeof PlannerRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
-  '/doc/': typeof DocRoute
   '/doc/$id': typeof DocIdRoute
 }
 export interface FileRoutesByTo {
@@ -84,7 +77,6 @@ export interface FileRoutesByTo {
   '/planner': typeof PlannerRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
-  '/doc': typeof DocRoute
   '/doc/$id': typeof DocIdRoute
 }
 export interface FileRoutesById {
@@ -96,7 +88,6 @@ export interface FileRoutesById {
   '/planner': typeof PlannerRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
-  '/doc/': typeof DocRoute
   '/doc/$id': typeof DocIdRoute
 }
 export interface FileRouteTypes {
@@ -109,7 +100,6 @@ export interface FileRouteTypes {
     | '/planner'
     | '/results'
     | '/settings'
-    | '/doc/'
     | '/doc/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -120,7 +110,6 @@ export interface FileRouteTypes {
     | '/planner'
     | '/results'
     | '/settings'
-    | '/doc'
     | '/doc/$id'
   id:
     | '__root__'
@@ -131,7 +120,6 @@ export interface FileRouteTypes {
     | '/planner'
     | '/results'
     | '/settings'
-    | '/doc/'
     | '/doc/$id'
   fileRoutesById: FileRoutesById
 }
@@ -143,7 +131,6 @@ export interface RootRouteChildren {
   PlannerRoute: typeof PlannerRoute
   ResultsRoute: typeof ResultsRoute
   SettingsRoute: typeof SettingsRoute
-  DocRoute: typeof DocRoute
   DocIdRoute: typeof DocIdRoute
 }
 
@@ -205,13 +192,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/doc/': {
-      id: '/doc/'
-      path: '/doc'
-      fullPath: '/doc/'
-      preLoaderRoute: typeof DocRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -223,7 +203,6 @@ const rootRouteChildren: RootRouteChildren = {
   PlannerRoute: PlannerRoute,
   ResultsRoute: ResultsRoute,
   SettingsRoute: SettingsRoute,
-  DocRoute: DocRoute,
   DocIdRoute: DocIdRoute,
 }
 export const routeTree = rootRouteImport
