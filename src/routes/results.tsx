@@ -148,8 +148,39 @@ function ResultsPage() {
     const r = paid.filter((d) => d.paidAt?.startsWith(key)).reduce((s, d) => s + docTotals(d, billing.vatPct).total, 0);
     const e = exp.filter((x) => x.date.startsWith(key)).reduce((s, x) => s + (x.amount || 0), 0);
     const s = exp.filter((x) => x.date.startsWith(key) && isSalary(x)).reduce((a, x) => a + (x.amount || 0), 0);
-    return { label: bucketLabel(b), Revenue: Math.round(r), Expenses: Math.round(e), Salary: Math.round(s), Net: Math.round(r - e) };
-  }), [buckets, paid, exp, billing.vatPct, bucket]);
+    const lyKey = bucketKey(subYears(b, 1));
+    const lyRev = paidAll.filter((d) => d.paidAt?.startsWith(lyKey)).reduce((a, d) => a + docTotals(d, billing.vatPct).total, 0);
+    const lyExp = expenses.filter((x) => x.date.startsWith(lyKey)).reduce((a, x) => a + (x.amount || 0), 0);
+    return {
+      label: bucketLabel(b), date: b,
+      Revenue: Math.round(r), Expenses: Math.round(e), Salary: Math.round(s), Net: Math.round(r - e),
+      "Rev LY": Math.round(lyRev), "Exp LY": Math.round(lyExp),
+    };
+  }), [buckets, paid, exp, paidAll, expenses, billing.vatPct, bucket]);
+
+  // ---- Forecast (only while the selected period is still running) ----
+  const running = from <= now && now <= to;
+  const revIn = (s: Date, e: Date) => sumRev(paidAll.filter((d) => inRange(d.paidAt, s, e)));
+  const expIn = (s: Date, e: Date) => sumExp(expenses.filter((x) => inRange(x.date, s, e)));
+  const fcRevenue = useMemo(
+    () => (running ? weightedForecast({ from, to, today: now, sumInWindow: revIn }) : null),
+    [running, from, to, paidAll, billing.vatPct],
+  );
+  const fcExpenses = useMemo(
+    () => (running ? weightedForecast({ from, to, today: now, sumInWindow: expIn }) : null),
+    [running, from, to, expenses],
+  );
+  const fcNet = fcRevenue && fcExpenses ? fcRevenue.projected - fcExpenses.projected : 0;
+
+  // Faded projected revenue spread across the buckets still to come.
+  const chartData = useMemo(() => {
+    if (!fcRevenue) return cashflow;
+    const remaining = Math.max(0, fcRevenue.projected - fcRevenue.toDate);
+    const future = cashflow.filter((c) => c.date > now);
+    if (!future.length || remaining <= 0) return cashflow;
+    const per = Math.round(remaining / future.length);
+    return cashflow.map((c) => (c.date > now ? { ...c, Forecast: per } : { ...c, Forecast: 0 }));
+  }, [cashflow, fcRevenue]);
 
   const byMethod = useMemo(() => {
     const m: Record<string, number> = { cash: 0, eft: 0, card: 0 };
