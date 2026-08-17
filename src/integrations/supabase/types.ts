@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendar_settings: {
+        Row: {
+          calendar_id: string | null
+          calendar_name: string | null
+          created_at: string
+          enabled: boolean
+          last_sync_at: string | null
+          owner_user_id: string
+          sync_token: string | null
+          updated_at: string
+        }
+        Insert: {
+          calendar_id?: string | null
+          calendar_name?: string | null
+          created_at?: string
+          enabled?: boolean
+          last_sync_at?: string | null
+          owner_user_id: string
+          sync_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calendar_id?: string | null
+          calendar_name?: string | null
+          created_at?: string
+          enabled?: boolean
+          last_sync_at?: string | null
+          owner_user_id?: string
+          sync_token?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       catalog_items: {
         Row: {
           created_at: string
@@ -124,6 +157,9 @@ export type Database = {
           distance_km: number | null
           from_address: string | null
           from_coords: Json | null
+          gcal_etag: string | null
+          gcal_event_id: string | null
+          gcal_synced_at: string | null
           id: string
           items: Json
           job_category: string | null
@@ -152,6 +188,9 @@ export type Database = {
           distance_km?: number | null
           from_address?: string | null
           from_coords?: Json | null
+          gcal_etag?: string | null
+          gcal_event_id?: string | null
+          gcal_synced_at?: string | null
           id: string
           items?: Json
           job_category?: string | null
@@ -180,6 +219,9 @@ export type Database = {
           distance_km?: number | null
           from_address?: string | null
           from_coords?: Json | null
+          gcal_etag?: string | null
+          gcal_event_id?: string | null
+          gcal_synced_at?: string | null
           id?: string
           items?: Json
           job_category?: string | null

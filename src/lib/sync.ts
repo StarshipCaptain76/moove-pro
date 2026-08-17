@@ -202,6 +202,8 @@ export function pushDoc(d: Doc) {
     });
     if (error) throw error;
   });
+  // Keep the linked Google Calendar appointment in step (debounced).
+  void import("./calendar-client").then((m) => m.scheduleCalendarSync()).catch(() => {});
 }
 
 export function deleteDocRow(id: string) {

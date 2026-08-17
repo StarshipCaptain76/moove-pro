@@ -16,6 +16,16 @@ import { InlineTumbler } from "@/components/app/InlineTumbler";
 import { Slider } from "@/components/ui/slider";
 import { WheelSelect } from "@/components/app/WheelSelect";
 import { notificationStatus, requestNotificationPermission } from "@/lib/reminders";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  listCalendars,
+  getCalendarSettings,
+  saveCalendarSettings,
+  syncCalendar,
+} from "@/lib/calendar.functions";
+import { refreshSync } from "@/lib/sync";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RefreshCw, CalendarDays } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
@@ -24,12 +34,13 @@ function SettingsPage() {
   return (
     <Shell>
       <Tabs defaultValue="company">
-        <TabsList className="mb-4 w-full grid grid-cols-7">
+        <TabsList className="mb-4 w-full grid grid-cols-8">
           <TabsTrigger value="company">Company</TabsTrigger>
           <TabsTrigger value="banking">Banking</TabsTrigger>
           <TabsTrigger value="catalog">Catalog</TabsTrigger>
           <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="appearance">Display</TabsTrigger>
           <TabsTrigger value="data">Data</TabsTrigger>
         </TabsList>
@@ -85,6 +96,10 @@ function SettingsPage() {
           <RemindersEditor />
         </TabsContent>
 
+        <TabsContent value="calendar">
+          <GoogleCalendarCard />
+        </TabsContent>
+
         <TabsContent value="appearance">
           <AppearanceEditor />
         </TabsContent>
@@ -99,6 +114,139 @@ function SettingsPage() {
 
 function DataEditor() {
   return <DataEditorInner />;
+}
+
+function GoogleCalendarCard() {
+  const load = useServerFn(getCalendarSettings);
+  const listFn = useServerFn(listCalendars);
+  const saveFn = useServerFn(saveCalendarSettings);
+  const syncFn = useServerFn(syncCalendar);
+
+  const [cals, setCals] = useState<Array<{ id: string; name: string; primary: boolean }>>([]);
+  const [calendarId, setCalendarId] = useState<string | null>(null);
+  const [enabled, setEnabled] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const s = await load();
+        if (!alive) return;
+        setCalendarId(s.calendarId);
+        setEnabled(s.enabled);
+        setLastSync(s.lastSyncAt);
+        const list = await listFn();
+        if (!alive) return;
+        setCals(list);
+      } catch (e) {
+        if (alive) setError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [load, listFn]);
+
+  const persist = async (next: { calendarId: string | null; enabled: boolean }) => {
+    setBusy(true);
+    try {
+      await saveFn({
+        data: {
+          calendarId: next.calendarId,
+          calendarName: cals.find((c) => c.id === next.calendarId)?.name ?? null,
+          enabled: next.enabled,
+        },
+      });
+      toast.success("Calendar settings saved");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runSync = async () => {
+    setBusy(true);
+    try {
+      const r = await syncFn({ data: { origin: window.location.origin } });
+      if (r.skipped) {
+        toast.message("Sync is off — pick a calendar and switch it on.");
+      } else {
+        toast.success(
+          `Synced: ${r.pushed} sent, ${r.created} imported, ${r.updated} updated${r.remaining ? `, ${r.remaining} queued` : ""}`,
+        );
+        setLastSync(new Date().toISOString());
+        await refreshSync();
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Sync failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card className="p-4 sm:p-6 grid gap-4 max-w-2xl">
+      <div className="flex items-center gap-2">
+        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+        <h3 className="font-semibold">Google Calendar</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Scheduled jobs, invoices and quotes appear as appointments. New appointments on the chosen
+        calendar come back as job cards.
+      </p>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <div className="grid gap-2">
+        <Label>Calendar</Label>
+        <Select
+          value={calendarId ?? undefined}
+          onValueChange={(v) => {
+            setCalendarId(v);
+            void persist({ calendarId: v, enabled });
+          }}
+        >
+          <SelectTrigger className="h-11">
+            <SelectValue placeholder={cals.length ? "Choose a calendar" : "Loading calendars…"} />
+          </SelectTrigger>
+          <SelectContent>
+            {cals.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+                {c.primary ? " (primary)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={enabled}
+          disabled={!calendarId}
+          onChange={(e) => {
+            setEnabled(e.target.checked);
+            void persist({ calendarId, enabled: e.target.checked });
+          }}
+        />
+        Two-way sync enabled
+      </label>
+
+      <div className="flex items-center gap-3">
+        <Button onClick={runSync} disabled={busy || !calendarId} className="w-fit">
+          <RefreshCw className={busy ? "animate-spin" : ""} /> Sync now
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          {lastSync ? `Last synced ${new Date(lastSync).toLocaleString()}` : "Not synced yet"}
+        </span>
+      </div>
+    </Card>
+  );
 }
 
 const LEAD_OPTIONS = [5, 10, 15, 30, 45, 60, 90, 120];
