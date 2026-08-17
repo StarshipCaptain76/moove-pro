@@ -47,6 +47,36 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_sources: {
+        Row: {
+          calendar_id: string
+          calendar_name: string | null
+          created_at: string
+          id: string
+          last_sync_at: string | null
+          owner_user_id: string
+          sync_token: string | null
+        }
+        Insert: {
+          calendar_id: string
+          calendar_name?: string | null
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          owner_user_id: string
+          sync_token?: string | null
+        }
+        Update: {
+          calendar_id?: string
+          calendar_name?: string | null
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          owner_user_id?: string
+          sync_token?: string | null
+        }
+        Relationships: []
+      }
       catalog_items: {
         Row: {
           created_at: string
@@ -157,6 +187,7 @@ export type Database = {
           distance_km: number | null
           from_address: string | null
           from_coords: Json | null
+          gcal_calendar_id: string | null
           gcal_etag: string | null
           gcal_event_id: string | null
           gcal_synced_at: string | null
@@ -188,6 +219,7 @@ export type Database = {
           distance_km?: number | null
           from_address?: string | null
           from_coords?: Json | null
+          gcal_calendar_id?: string | null
           gcal_etag?: string | null
           gcal_event_id?: string | null
           gcal_synced_at?: string | null
@@ -219,6 +251,7 @@ export type Database = {
           distance_km?: number | null
           from_address?: string | null
           from_coords?: Json | null
+          gcal_calendar_id?: string | null
           gcal_etag?: string | null
           gcal_event_id?: string | null
           gcal_synced_at?: string | null
