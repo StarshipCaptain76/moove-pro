@@ -1,0 +1,1 @@
+delete from public.calendar_sources where calendar_id like 'family%@group.calendar.google.com';
