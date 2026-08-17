@@ -13,7 +13,7 @@ import {
 const GATEWAY = "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
 
 const DOC_COLS =
-  "id,number,type,status,archived,scheduled_date,scheduled_time,scheduled_end_date,customer,items,notes,from_address,to_address,stops,distance_km,job_category,gcal_event_id,gcal_synced_at,updated_at";
+  "id,number,type,status,archived,scheduled_date,scheduled_time,scheduled_end_date,customer,items,notes,from_address,to_address,stops,distance_km,job_category,gcal_event_id,gcal_calendar_id,gcal_synced_at,updated_at";
 
 function gheaders() {
   const lov = process.env.LOVABLE_API_KEY;
@@ -78,11 +78,21 @@ export const getCalendarSettings = createServerFn({ method: "GET" })
       .eq("owner_user_id", context.userId)
       .maybeSingle();
     if (error) throw error;
+    const { data: sources, error: srcErr } = await context.supabase
+      .from("calendar_sources")
+      .select("calendar_id,calendar_name,last_sync_at")
+      .eq("owner_user_id", context.userId);
+    if (srcErr) throw srcErr;
     return {
       calendarId: data?.calendar_id ?? null,
       calendarName: data?.calendar_name ?? null,
       enabled: !!data?.enabled,
       lastSyncAt: data?.last_sync_at ?? null,
+      sources: (sources ?? []).map((s) => ({
+        id: s.calendar_id,
+        name: s.calendar_name ?? s.calendar_id,
+        lastSyncAt: s.last_sync_at,
+      })),
     };
   });
 
@@ -94,6 +104,9 @@ export const saveCalendarSettings = createServerFn({ method: "POST" })
         calendarId: z.string().nullable().optional(),
         calendarName: z.string().nullable().optional(),
         enabled: z.boolean(),
+        sources: z
+          .array(z.object({ id: z.string(), name: z.string().optional() }))
+          .optional(),
       })
       .parse(d),
   )
@@ -110,6 +123,36 @@ export const saveCalendarSettings = createServerFn({ method: "POST" })
       { onConflict: "owner_user_id" },
     );
     if (error) throw error;
+
+    if (data.sources) {
+      // The push target is always read back too.
+      const wanted = new Map<string, string | null>();
+      for (const s of data.sources) wanted.set(s.id, s.name ?? null);
+      if (data.calendarId) wanted.set(data.calendarId, data.calendarName ?? null);
+
+      const ids = Array.from(wanted.keys());
+      const del = context.supabase
+        .from("calendar_sources")
+        .delete()
+        .eq("owner_user_id", context.userId);
+      const { error: delErr } = ids.length
+        ? await del.not("calendar_id", "in", `(${ids.map((i) => `"${i}"`).join(",")})`)
+        : await del;
+      if (delErr) throw delErr;
+
+      if (ids.length) {
+        // Upsert keeps each calendar's existing sync token.
+        const { error: upErr } = await context.supabase.from("calendar_sources").upsert(
+          ids.map((id) => ({
+            owner_user_id: context.userId,
+            calendar_id: id,
+            calendar_name: wanted.get(id),
+          })),
+          { onConflict: "owner_user_id,calendar_id", ignoreDuplicates: false },
+        );
+        if (upErr) throw upErr;
+      }
+    }
     return { ok: true };
   });
 
@@ -133,6 +176,7 @@ export const syncCalendar = createServerFn({ method: "POST" })
       return { skipped: true, pushed: 0, removed: 0, updated: 0, created: 0, remaining: 0 };
     }
     const cal = encodeURIComponent(settings.calendar_id);
+    const pushCalId = settings.calendar_id;
 
     const { data: docRows, error: dErr } = await supabase
       .from("docs")
@@ -157,21 +201,26 @@ export const syncCalendar = createServerFn({ method: "POST" })
           remaining += 1;
           continue;
         }
+        // Appointments stay on whichever calendar they were created on.
+        const rowCal = encodeURIComponent(row.gcal_calendar_id ?? pushCalId);
         const body = docToEvent(row, origin);
         let res = row.gcal_event_id
-          ? await gcal<GEvent>(`/calendars/${cal}/events/${encodeURIComponent(row.gcal_event_id)}`, {
-              method: "PATCH",
-              body,
-            })
+          ? await gcal<GEvent>(
+              `/calendars/${rowCal}/events/${encodeURIComponent(row.gcal_event_id)}`,
+              { method: "PATCH", body },
+            )
           : await gcal<GEvent>(`/calendars/${cal}/events`, { method: "POST", body });
+        let landedOn = row.gcal_event_id ? (row.gcal_calendar_id ?? pushCalId) : pushCalId;
         if (!res.ok && row.gcal_event_id && (res.status === 404 || res.status === 410)) {
           res = await gcal<GEvent>(`/calendars/${cal}/events`, { method: "POST", body });
+          landedOn = pushCalId;
         }
         if (!res.ok) continue;
         await supabase
           .from("docs")
           .update({
             gcal_event_id: res.data.id ?? row.gcal_event_id,
+            gcal_calendar_id: landedOn,
             gcal_etag: res.data.etag ?? null,
             gcal_synced_at: now(),
           })
@@ -180,20 +229,39 @@ export const syncCalendar = createServerFn({ method: "POST" })
         pushed += 1;
         await sleep(120);
       } else if (!wanted && row.gcal_event_id) {
-        await gcal(`/calendars/${cal}/events/${encodeURIComponent(row.gcal_event_id)}`, {
+        const rowCal = encodeURIComponent(row.gcal_calendar_id ?? pushCalId);
+        await gcal(`/calendars/${rowCal}/events/${encodeURIComponent(row.gcal_event_id)}`, {
           method: "DELETE",
         });
         await supabase
           .from("docs")
-          .update({ gcal_event_id: null, gcal_etag: null, gcal_synced_at: now() })
+          .update({
+            gcal_event_id: null,
+            gcal_calendar_id: null,
+            gcal_etag: null,
+            gcal_synced_at: now(),
+          })
           .eq("id", row.id)
           .eq("owner_user_id", uid);
         removed += 1;
       }
     }
 
-    // ---------- pull ----------
-    const listPath = (token?: string | null) => {
+    // ---------- pull (every selected calendar) ----------
+    const { data: srcRows, error: srcErr } = await supabase
+      .from("calendar_sources")
+      .select("calendar_id,sync_token")
+      .eq("owner_user_id", uid);
+    if (srcErr) throw srcErr;
+    const sources = (srcRows ?? []).map((r) => ({
+      id: r.calendar_id,
+      token: r.sync_token as string | null,
+    }));
+    if (!sources.some((s) => s.id === pushCalId)) {
+      sources.push({ id: pushCalId, token: settings.sync_token });
+    }
+
+    const listPath = (calId: string, token?: string | null) => {
       const p = new URLSearchParams({
         singleEvents: "true",
         showDeleted: "true",
@@ -205,26 +273,8 @@ export const syncCalendar = createServerFn({ method: "POST" })
         from.setDate(from.getDate() - 30);
         p.set("timeMin", from.toISOString());
       }
-      return `/calendars/${cal}/events?${p.toString()}`;
+      return `/calendars/${encodeURIComponent(calId)}/events?${p.toString()}`;
     };
-
-    let list = await gcal<{ items?: GEvent[]; nextSyncToken?: string }>(
-      listPath(settings.sync_token),
-    );
-    if (!list.ok && list.status === 410) list = await gcal(listPath(null));
-    if (!list.ok) {
-      // Push already succeeded — report partial success instead of failing the run.
-      return {
-        skipped: false,
-        pushed,
-        removed,
-        created: 0,
-        updated: 0,
-        deleted: 0,
-        remaining,
-        error: `Could not read calendar [${list.status}]`,
-      };
-    }
 
     // Refresh docs (push may have set event ids).
     const { data: fresh } = await supabase
@@ -251,90 +301,125 @@ export const syncCalendar = createServerFn({ method: "POST" })
     let created = 0;
     let updated = 0;
     let deleted = 0;
+    let readError: string | null = null;
 
-    for (const ev of list.data.items ?? []) {
-      if (!ev.id) continue;
-      // Birthdays, reminders and "free" placeholders are not jobs.
-      const ignoredType =
-        ev.eventType && ev.eventType !== "default" && ev.eventType !== "outOfOffice";
-      if (ignoredType || ev.transparency === "transparent") continue;
-      const linkedId = ev.extendedProperties?.private?.[DOC_PROP];
-      const match = byEvent.get(ev.id) ?? (linkedId ? byId.get(linkedId) : undefined);
+    for (const src of sources) {
+      let list = await gcal<{ items?: GEvent[]; nextSyncToken?: string }>(
+        listPath(src.id, src.token),
+      );
+      if (!list.ok && list.status === 410) list = await gcal(listPath(src.id, null));
+      if (!list.ok) {
+        // Push already ran — report partial success instead of failing everything.
+        readError = `Could not read ${src.id} [${list.status}]`;
+        continue;
+      }
 
-      if (ev.status === "cancelled") {
-        if (!match) continue;
-        const isPlainJob = match.type === "job" && (match.items ?? []).length === 0;
-        if (isPlainJob) {
-          await supabase.from("docs").delete().eq("id", match.id).eq("owner_user_id", uid);
-        } else {
+      for (const ev of list.data.items ?? []) {
+        if (!ev.id) continue;
+        // Birthdays, reminders and "free" placeholders are not jobs.
+        const ignoredType =
+          ev.eventType && ev.eventType !== "default" && ev.eventType !== "outOfOffice";
+        if (ignoredType || ev.transparency === "transparent") continue;
+        const linkedId = ev.extendedProperties?.private?.[DOC_PROP];
+        const match = byEvent.get(ev.id) ?? (linkedId ? byId.get(linkedId) : undefined);
+
+        if (ev.status === "cancelled") {
+          if (!match) continue;
+          const isPlainJob = match.type === "job" && (match.items ?? []).length === 0;
+          if (isPlainJob) {
+            await supabase.from("docs").delete().eq("id", match.id).eq("owner_user_id", uid);
+          } else {
+            await supabase
+              .from("docs")
+              .update({
+                scheduled_date: null,
+                gcal_event_id: null,
+                gcal_calendar_id: null,
+                gcal_synced_at: new Date().toISOString(),
+              })
+              .eq("id", match.id)
+              .eq("owner_user_id", uid);
+          }
+          deleted += 1;
+          continue;
+        }
+
+        const f = eventToDocFields(ev);
+        if (!f.scheduled_date) continue;
+
+        if (match) {
+          const evUpdated = ev.updated ? new Date(ev.updated).getTime() : 0;
+          const docUpdated = new Date(match.updated_at).getTime();
+          if (evUpdated <= docUpdated) continue; // app wins — it is newer
           await supabase
             .from("docs")
-            .update({ scheduled_date: null, gcal_event_id: null, gcal_synced_at: new Date().toISOString() })
+            .update({
+              scheduled_date: f.scheduled_date,
+              scheduled_time: f.scheduled_time,
+              scheduled_end_date: f.scheduled_end_date,
+              ...(match.type === "job"
+                ? {
+                    customer: {
+                      ...(match.customer ?? {}),
+                      name: f.name,
+                      address: f.address ?? undefined,
+                    },
+                    notes: f.notes,
+                  }
+                : {}),
+              gcal_event_id: ev.id,
+              gcal_calendar_id: src.id,
+              gcal_etag: ev.etag ?? null,
+              gcal_synced_at: new Date().toISOString(),
+            })
             .eq("id", match.id)
             .eq("owner_user_id", uid);
+          updated += 1;
+          continue;
         }
-        deleted += 1;
-        continue;
+
+        // Unknown event -> create a Job card.
+        const id = Math.random().toString(36).slice(2, 10);
+        const number = `${jobPrefix}-${nextJobNo}`;
+        nextJobNo += 1;
+        const { error: insErr } = await supabase.from("docs").insert({
+          id,
+          owner_user_id: uid,
+          number,
+          type: "job",
+          status: "draft",
+          scheduled_date: f.scheduled_date,
+          scheduled_time: f.scheduled_time,
+          scheduled_end_date: f.scheduled_end_date,
+          archived: false,
+          customer: { id, name: f.name, phone: "", email: "", address: f.address ?? undefined },
+          items: [],
+          notes: f.notes,
+          deposit_pct: 0,
+          deposit_paid: false,
+          job_category: "other",
+          gcal_event_id: ev.id,
+          gcal_calendar_id: src.id,
+          gcal_etag: ev.etag ?? null,
+          gcal_synced_at: new Date().toISOString(),
+        });
+        if (insErr) {
+          console.error("[gcal] insert job failed", insErr);
+          continue;
+        }
+        byEvent.set(ev.id, { id } as unknown as DocRow);
+        created += 1;
       }
 
-      const f = eventToDocFields(ev);
-      if (!f.scheduled_date) continue;
-
-      if (match) {
-        const evUpdated = ev.updated ? new Date(ev.updated).getTime() : 0;
-        const docUpdated = new Date(match.updated_at).getTime();
-        if (evUpdated <= docUpdated) continue; // app wins — it is newer
-        await supabase
-          .from("docs")
-          .update({
-            scheduled_date: f.scheduled_date,
-            scheduled_time: f.scheduled_time,
-            scheduled_end_date: f.scheduled_end_date,
-            ...(match.type === "job"
-              ? {
-                  customer: { ...(match.customer ?? {}), name: f.name, address: f.address ?? undefined },
-                  notes: f.notes,
-                }
-              : {}),
-            gcal_event_id: ev.id,
-            gcal_etag: ev.etag ?? null,
-            gcal_synced_at: new Date().toISOString(),
-          })
-          .eq("id", match.id)
-          .eq("owner_user_id", uid);
-        updated += 1;
-        continue;
-      }
-
-      // Unknown event -> create a Job card.
-      const id = Math.random().toString(36).slice(2, 10);
-      const number = `${jobPrefix}-${nextJobNo}`;
-      nextJobNo += 1;
-      const { error: insErr } = await supabase.from("docs").insert({
-        id,
-        owner_user_id: uid,
-        number,
-        type: "job",
-        status: "draft",
-        scheduled_date: f.scheduled_date,
-        scheduled_time: f.scheduled_time,
-        scheduled_end_date: f.scheduled_end_date,
-        archived: false,
-        customer: { id, name: f.name, phone: "", email: "", address: f.address ?? undefined },
-        items: [],
-        notes: f.notes,
-        deposit_pct: 0,
-        deposit_paid: false,
-        job_category: "other",
-        gcal_event_id: ev.id,
-        gcal_etag: ev.etag ?? null,
-        gcal_synced_at: new Date().toISOString(),
-      });
-      if (insErr) {
-        console.error("[gcal] insert job failed", insErr);
-        continue;
-      }
-      created += 1;
+      await supabase.from("calendar_sources").upsert(
+        {
+          owner_user_id: uid,
+          calendar_id: src.id,
+          sync_token: list.data.nextSyncToken ?? src.token,
+          last_sync_at: new Date().toISOString(),
+        },
+        { onConflict: "owner_user_id,calendar_id" },
+      );
     }
 
     if (created > 0) {
@@ -346,11 +431,18 @@ export const syncCalendar = createServerFn({ method: "POST" })
 
     await supabase
       .from("calendar_settings")
-      .update({
-        sync_token: list.data.nextSyncToken ?? settings.sync_token,
-        last_sync_at: new Date().toISOString(),
-      })
+      .update({ last_sync_at: new Date().toISOString() })
       .eq("owner_user_id", uid);
 
-    return { skipped: false, pushed, removed, created, updated, deleted, remaining };
+    return {
+      skipped: false,
+      pushed,
+      removed,
+      created,
+      updated,
+      deleted,
+      remaining,
+      calendars: sources.length,
+      ...(readError ? { error: readError } : {}),
+    };
   });

@@ -22,6 +22,7 @@ export interface DocRow {
   distance_km: number | string | null;
   job_category: string | null;
   gcal_event_id: string | null;
+  gcal_calendar_id?: string | null;
   gcal_synced_at: string | null;
   updated_at: string;
 }

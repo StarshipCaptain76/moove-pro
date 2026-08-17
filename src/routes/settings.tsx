@@ -124,6 +124,7 @@ function GoogleCalendarCard() {
 
   const [cals, setCals] = useState<Array<{ id: string; name: string; primary: boolean }>>([]);
   const [calendarId, setCalendarId] = useState<string | null>(null);
+  const [extraIds, setExtraIds] = useState<string[]>([]);
   const [enabled, setEnabled] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -136,6 +137,7 @@ function GoogleCalendarCard() {
         const s = await load();
         if (!alive) return;
         setCalendarId(s.calendarId);
+        setExtraIds(s.sources.map((x) => x.id).filter((id) => id !== s.calendarId));
         setEnabled(s.enabled);
         setLastSync(s.lastSyncAt);
         const list = await listFn();
@@ -150,7 +152,11 @@ function GoogleCalendarCard() {
     };
   }, [load, listFn]);
 
-  const persist = async (next: { calendarId: string | null; enabled: boolean }) => {
+  const persist = async (next: {
+    calendarId: string | null;
+    enabled: boolean;
+    extraIds: string[];
+  }) => {
     setBusy(true);
     try {
       await saveFn({
@@ -158,6 +164,10 @@ function GoogleCalendarCard() {
           calendarId: next.calendarId,
           calendarName: cals.find((c) => c.id === next.calendarId)?.name ?? null,
           enabled: next.enabled,
+          sources: next.extraIds.map((id) => ({
+            id,
+            name: cals.find((c) => c.id === id)?.name ?? id,
+          })),
         },
       });
       toast.success("Calendar settings saved");
@@ -195,19 +205,21 @@ function GoogleCalendarCard() {
         <h3 className="font-semibold">Google Calendar</h3>
       </div>
       <p className="text-sm text-muted-foreground">
-        Scheduled jobs, invoices and quotes appear as appointments. New appointments on the chosen
-        calendar come back as job cards.
+        Scheduled jobs, invoices and quotes are written to the main calendar. New appointments on
+        any of the calendars you tick come back as job cards.
       </p>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="grid gap-2">
-        <Label>Calendar</Label>
+        <Label>Main calendar (jobs are written here)</Label>
         <Select
           value={calendarId ?? undefined}
           onValueChange={(v) => {
             setCalendarId(v);
-            void persist({ calendarId: v, enabled });
+            const extras = extraIds.filter((id) => id !== v);
+            setExtraIds(extras);
+            void persist({ calendarId: v, enabled, extraIds: extras });
           }}
         >
           <SelectTrigger className="h-11">
@@ -224,6 +236,34 @@ function GoogleCalendarCard() {
         </Select>
       </div>
 
+      <div className="grid gap-2">
+        <Label>Also read appointments from</Label>
+        <div className="grid gap-1.5 rounded-md border p-3">
+          {cals.filter((c) => c.id !== calendarId).length === 0 && (
+            <p className="text-sm text-muted-foreground">No other calendars available.</p>
+          )}
+          {cals
+            .filter((c) => c.id !== calendarId)
+            .map((c) => (
+              <label key={c.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={extraIds.includes(c.id)}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...extraIds, c.id]
+                      : extraIds.filter((id) => id !== c.id);
+                    setExtraIds(next);
+                    void persist({ calendarId, enabled, extraIds: next });
+                  }}
+                />
+                {c.name}
+                {c.primary ? " (primary)" : ""}
+              </label>
+            ))}
+        </div>
+      </div>
+
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -231,7 +271,7 @@ function GoogleCalendarCard() {
           disabled={!calendarId}
           onChange={(e) => {
             setEnabled(e.target.checked);
-            void persist({ calendarId, enabled: e.target.checked });
+            void persist({ calendarId, enabled: e.target.checked, extraIds });
           }}
         />
         Two-way sync enabled
