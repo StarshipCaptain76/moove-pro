@@ -7,7 +7,8 @@ import {
   addDays, addMonths, endOfMonth, endOfWeek, format, isSameMonth, isToday, isTomorrow, parseISO,
   startOfMonth, startOfWeek,
 } from "date-fns";
-import { useMemo, useState, useRef, useCallback } from "react";
+import { useMemo, useState, useRef, useCallback, useEffect } from "react";
+import { runCalendarSync } from "@/lib/calendar-client";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { ChevronLeft, ChevronRight, ChevronDown, GripVertical, Check, X, CalendarDays, ExternalLink, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -159,6 +160,14 @@ function PlannerPage() {
   const [actionDoc, setActionDoc] = useState<Doc | null>(null);
   const [moveMode, setMoveMode] = useState(false);
   const openActions = (d: Doc) => { setActionDoc(d); setMoveMode(false); };
+
+  // Keep Google Calendar in step whenever the planner is opened / refocused.
+  useEffect(() => {
+    void runCalendarSync({ minIntervalMs: 60_000 });
+    const onFocus = () => void runCalendarSync({ minIntervalMs: 60_000 });
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
 
   // Show accepted/paid jobs, plus any invoice that isn't cancelled — a draft
   // or sent invoice scheduled for a day is still real work on the calendar.
