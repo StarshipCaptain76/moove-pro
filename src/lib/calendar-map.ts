@@ -34,6 +34,8 @@ export interface GEvent {
   location?: string;
   updated?: string;
   etag?: string;
+  eventType?: string;
+  transparency?: string;
   start?: { date?: string; dateTime?: string; timeZone?: string };
   end?: { date?: string; dateTime?: string; timeZone?: string };
   extendedProperties?: { private?: Record<string, string> };
