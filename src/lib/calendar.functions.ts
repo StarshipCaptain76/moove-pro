@@ -176,6 +176,7 @@ export const syncCalendar = createServerFn({ method: "POST" })
       return { skipped: true, pushed: 0, removed: 0, updated: 0, created: 0, remaining: 0 };
     }
     const cal = encodeURIComponent(settings.calendar_id);
+    const pushCalId = settings.calendar_id;
 
     const { data: docRows, error: dErr } = await supabase
       .from("docs")
@@ -200,21 +201,26 @@ export const syncCalendar = createServerFn({ method: "POST" })
           remaining += 1;
           continue;
         }
+        // Appointments stay on whichever calendar they were created on.
+        const rowCal = encodeURIComponent(row.gcal_calendar_id ?? pushCalId);
         const body = docToEvent(row, origin);
         let res = row.gcal_event_id
-          ? await gcal<GEvent>(`/calendars/${cal}/events/${encodeURIComponent(row.gcal_event_id)}`, {
-              method: "PATCH",
-              body,
-            })
+          ? await gcal<GEvent>(
+              `/calendars/${rowCal}/events/${encodeURIComponent(row.gcal_event_id)}`,
+              { method: "PATCH", body },
+            )
           : await gcal<GEvent>(`/calendars/${cal}/events`, { method: "POST", body });
+        let landedOn = row.gcal_event_id ? (row.gcal_calendar_id ?? pushCalId) : pushCalId;
         if (!res.ok && row.gcal_event_id && (res.status === 404 || res.status === 410)) {
           res = await gcal<GEvent>(`/calendars/${cal}/events`, { method: "POST", body });
+          landedOn = pushCalId;
         }
         if (!res.ok) continue;
         await supabase
           .from("docs")
           .update({
             gcal_event_id: res.data.id ?? row.gcal_event_id,
+            gcal_calendar_id: landedOn,
             gcal_etag: res.data.etag ?? null,
             gcal_synced_at: now(),
           })
@@ -223,12 +229,18 @@ export const syncCalendar = createServerFn({ method: "POST" })
         pushed += 1;
         await sleep(120);
       } else if (!wanted && row.gcal_event_id) {
-        await gcal(`/calendars/${cal}/events/${encodeURIComponent(row.gcal_event_id)}`, {
+        const rowCal = encodeURIComponent(row.gcal_calendar_id ?? pushCalId);
+        await gcal(`/calendars/${rowCal}/events/${encodeURIComponent(row.gcal_event_id)}`, {
           method: "DELETE",
         });
         await supabase
           .from("docs")
-          .update({ gcal_event_id: null, gcal_etag: null, gcal_synced_at: now() })
+          .update({
+            gcal_event_id: null,
+            gcal_calendar_id: null,
+            gcal_etag: null,
+            gcal_synced_at: now(),
+          })
           .eq("id", row.id)
           .eq("owner_user_id", uid);
         removed += 1;
