@@ -26,22 +26,33 @@ function gheaders() {
   } as Record<string, string>;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function gcal<T>(
   path: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<{ ok: true; data: T } | { ok: false; status: number; body: string }> {
-  const res = await fetch(`${GATEWAY}${path}`, {
-    method: init.method ?? "GET",
-    headers: gheaders(),
-    ...(init.body ? { body: JSON.stringify(init.body) } : {}),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    console.error(`[gcal] ${init.method ?? "GET"} ${path} failed [${res.status}]: ${body}`);
-    return { ok: false, status: res.status, body };
+  let last = { status: 0, body: "" };
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const res = await fetch(`${GATEWAY}${path}`, {
+      method: init.method ?? "GET",
+      headers: gheaders(),
+      ...(init.body ? { body: JSON.stringify(init.body) } : {}),
+    });
+    if (res.ok) {
+      const text = await res.text();
+      return { ok: true, data: (text ? JSON.parse(text) : {}) as T };
+    }
+    last = { status: res.status, body: await res.text() };
+    // Transient gateway/provider hiccups: back off and retry.
+    if (res.status === 429 || res.status >= 500) {
+      await sleep(400 * (attempt + 1));
+      continue;
+    }
+    break;
   }
-  const text = await res.text();
-  return { ok: true, data: (text ? JSON.parse(text) : {}) as T };
+  console.error(`[gcal] ${init.method ?? "GET"} ${path} failed [${last.status}]: ${last.body}`);
+  return { ok: false, status: last.status, body: last.body };
 }
 
 export const listCalendars = createServerFn({ method: "GET" })
@@ -102,7 +113,7 @@ export const saveCalendarSettings = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const PUSH_LIMIT = 60;
+const PUSH_LIMIT = 25;
 
 export const syncCalendar = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -167,6 +178,7 @@ export const syncCalendar = createServerFn({ method: "POST" })
           .eq("id", row.id)
           .eq("owner_user_id", uid);
         pushed += 1;
+        await sleep(120);
       } else if (!wanted && row.gcal_event_id) {
         await gcal(`/calendars/${cal}/events/${encodeURIComponent(row.gcal_event_id)}`, {
           method: "DELETE",
@@ -200,7 +212,19 @@ export const syncCalendar = createServerFn({ method: "POST" })
       listPath(settings.sync_token),
     );
     if (!list.ok && list.status === 410) list = await gcal(listPath(null));
-    if (!list.ok) throw new Error(`Calendar read failed [${list.status}]: ${list.body}`);
+    if (!list.ok) {
+      // Push already succeeded — report partial success instead of failing the run.
+      return {
+        skipped: false,
+        pushed,
+        removed,
+        created: 0,
+        updated: 0,
+        deleted: 0,
+        remaining,
+        error: `Could not read calendar [${list.status}]`,
+      };
+    }
 
     // Refresh docs (push may have set event ids).
     const { data: fresh } = await supabase
