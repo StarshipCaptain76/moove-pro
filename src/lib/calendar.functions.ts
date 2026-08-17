@@ -13,7 +13,7 @@ import {
 const GATEWAY = "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
 
 const DOC_COLS =
-  "id,number,type,status,archived,scheduled_date,scheduled_time,scheduled_end_date,customer,items,notes,from_address,to_address,stops,distance_km,job_category,gcal_event_id,gcal_synced_at,updated_at";
+  "id,number,type,status,archived,scheduled_date,scheduled_time,scheduled_end_date,customer,items,notes,from_address,to_address,stops,distance_km,job_category,gcal_event_id,gcal_calendar_id,gcal_synced_at,updated_at";
 
 function gheaders() {
   const lov = process.env.LOVABLE_API_KEY;
@@ -78,11 +78,21 @@ export const getCalendarSettings = createServerFn({ method: "GET" })
       .eq("owner_user_id", context.userId)
       .maybeSingle();
     if (error) throw error;
+    const { data: sources, error: srcErr } = await context.supabase
+      .from("calendar_sources")
+      .select("calendar_id,calendar_name,last_sync_at")
+      .eq("owner_user_id", context.userId);
+    if (srcErr) throw srcErr;
     return {
       calendarId: data?.calendar_id ?? null,
       calendarName: data?.calendar_name ?? null,
       enabled: !!data?.enabled,
       lastSyncAt: data?.last_sync_at ?? null,
+      sources: (sources ?? []).map((s) => ({
+        id: s.calendar_id,
+        name: s.calendar_name ?? s.calendar_id,
+        lastSyncAt: s.last_sync_at,
+      })),
     };
   });
 
@@ -94,6 +104,9 @@ export const saveCalendarSettings = createServerFn({ method: "POST" })
         calendarId: z.string().nullable().optional(),
         calendarName: z.string().nullable().optional(),
         enabled: z.boolean(),
+        sources: z
+          .array(z.object({ id: z.string(), name: z.string().optional() }))
+          .optional(),
       })
       .parse(d),
   )
@@ -110,6 +123,36 @@ export const saveCalendarSettings = createServerFn({ method: "POST" })
       { onConflict: "owner_user_id" },
     );
     if (error) throw error;
+
+    if (data.sources) {
+      // The push target is always read back too.
+      const wanted = new Map<string, string | null>();
+      for (const s of data.sources) wanted.set(s.id, s.name ?? null);
+      if (data.calendarId) wanted.set(data.calendarId, data.calendarName ?? null);
+
+      const ids = Array.from(wanted.keys());
+      const del = context.supabase
+        .from("calendar_sources")
+        .delete()
+        .eq("owner_user_id", context.userId);
+      const { error: delErr } = ids.length
+        ? await del.not("calendar_id", "in", `(${ids.map((i) => `"${i}"`).join(",")})`)
+        : await del;
+      if (delErr) throw delErr;
+
+      if (ids.length) {
+        // Upsert keeps each calendar's existing sync token.
+        const { error: upErr } = await context.supabase.from("calendar_sources").upsert(
+          ids.map((id) => ({
+            owner_user_id: context.userId,
+            calendar_id: id,
+            calendar_name: wanted.get(id),
+          })),
+          { onConflict: "owner_user_id,calendar_id", ignoreDuplicates: false },
+        );
+        if (upErr) throw upErr;
+      }
+    }
     return { ok: true };
   });
 
