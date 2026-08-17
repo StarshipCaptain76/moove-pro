@@ -254,6 +254,10 @@ export const syncCalendar = createServerFn({ method: "POST" })
 
     for (const ev of list.data.items ?? []) {
       if (!ev.id) continue;
+      // Birthdays, reminders and "free" placeholders are not jobs.
+      const ignoredType =
+        ev.eventType && ev.eventType !== "default" && ev.eventType !== "outOfOffice";
+      if (ignoredType || ev.transparency === "transparent") continue;
       const linkedId = ev.extendedProperties?.private?.[DOC_PROP];
       const match = byEvent.get(ev.id) ?? (linkedId ? byId.get(linkedId) : undefined);
 
