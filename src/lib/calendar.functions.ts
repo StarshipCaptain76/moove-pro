@@ -359,7 +359,7 @@ export const syncCalendar = createServerFn({ method: "POST" })
           const docUpdated = new Date(match.updated_at).getTime();
           if (evUpdated <= docUpdated) continue; // app wins — it is newer
           // The location we pushed is the route line; don't let it clobber the address.
-          const pushedRoute = routeLine(match);
+          const pushedRoute = pushedRouteLine(match);
           const addr =
             f.address && f.address.trim() && f.address.trim() !== pushedRoute.trim()
               ? f.address
