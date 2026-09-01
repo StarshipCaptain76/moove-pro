@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   docToEvent,
   eventToDocFields,
+  routeLine,
   shouldSync,
   DOC_PROP,
   type DocRow,
