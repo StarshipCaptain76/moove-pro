@@ -4,12 +4,18 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   docToEvent,
   eventToDocFields,
-  routeLine,
   shouldSync,
   DOC_PROP,
   type DocRow,
   type GEvent,
 } from "./calendar-map";
+
+/** Same route string docToEvent pushes as the event location. */
+function pushedRouteLine(row: DocRow) {
+  return [row.from_address, ...(row.stops ?? []).map((s) => s?.address), row.to_address]
+    .filter((x): x is string => !!x && !!x.trim())
+    .join(" → ");
+}
 
 const GATEWAY = "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
 
@@ -353,7 +359,7 @@ export const syncCalendar = createServerFn({ method: "POST" })
           const docUpdated = new Date(match.updated_at).getTime();
           if (evUpdated <= docUpdated) continue; // app wins — it is newer
           // The location we pushed is the route line; don't let it clobber the address.
-          const pushedRoute = routeLine(match);
+          const pushedRoute = pushedRouteLine(match);
           const addr =
             f.address && f.address.trim() && f.address.trim() !== pushedRoute.trim()
               ? f.address
