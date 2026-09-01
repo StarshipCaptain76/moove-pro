@@ -4,12 +4,18 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   docToEvent,
   eventToDocFields,
-  routeLine,
   shouldSync,
   DOC_PROP,
   type DocRow,
   type GEvent,
 } from "./calendar-map";
+
+/** Same route string docToEvent pushes as the event location. */
+function pushedRouteLine(row: DocRow) {
+  return [row.from_address, ...(row.stops ?? []).map((s) => s?.address), row.to_address]
+    .filter((x): x is string => !!x && !!x.trim())
+    .join(" → ");
+}
 
 const GATEWAY = "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
 
