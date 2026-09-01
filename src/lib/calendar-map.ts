@@ -129,6 +129,26 @@ export function docToEvent(row: DocRow, appOrigin: string): Record<string, unkno
   };
 }
 
+const META_LINE = /^(Job( · .*)?|Invoice|Quote) [A-Z]+-?\d+$|^(Phone|Email|Route|Distance|Total):/;
+const APP_LINK = /^https?:\/\/\S+\/doc\/\S+$/;
+
+/**
+ * Pull the user-written notes back out of a description we generated ourselves.
+ * Returns null when the description carries nothing but generated metadata.
+ */
+export function extractNotes(description?: string | null): string | null {
+  if (!description) return null;
+  const lines = description.split("\n");
+  const generated = lines.some((l) => APP_LINK.test(l.trim())) || META_LINE.test(lines[0].trim());
+  if (!generated) return description;
+  const kept = lines.filter((l) => {
+    const t = l.trim();
+    return !!t && !META_LINE.test(t) && !APP_LINK.test(t);
+  });
+  const out = kept.join("\n").trim();
+  return out || null;
+}
+
 /** Extract the doc-shaped fields from an inbound Google event. */
 export function eventToDocFields(ev: GEvent) {
   const summary = (ev.summary ?? "Untitled").trim();
@@ -154,6 +174,7 @@ export function eventToDocFields(ev: GEvent) {
     scheduled_time: time,
     scheduled_end_date: endDate,
     address: ev.location ?? null,
-    notes: ev.description ?? null,
+    notes: extractNotes(ev.description),
   };
 }
+

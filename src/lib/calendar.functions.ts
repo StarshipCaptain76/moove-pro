@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   docToEvent,
   eventToDocFields,
+  routeLine,
   shouldSync,
   DOC_PROP,
   type DocRow,
@@ -351,6 +352,12 @@ export const syncCalendar = createServerFn({ method: "POST" })
           const evUpdated = ev.updated ? new Date(ev.updated).getTime() : 0;
           const docUpdated = new Date(match.updated_at).getTime();
           if (evUpdated <= docUpdated) continue; // app wins — it is newer
+          // The location we pushed is the route line; don't let it clobber the address.
+          const pushedRoute = routeLine(match);
+          const addr =
+            f.address && f.address.trim() && f.address.trim() !== pushedRoute.trim()
+              ? f.address
+              : (match.customer?.address ?? undefined);
           await supabase
             .from("docs")
             .update({
@@ -362,11 +369,12 @@ export const syncCalendar = createServerFn({ method: "POST" })
                     customer: {
                       ...(match.customer ?? {}),
                       name: f.name,
-                      address: f.address ?? undefined,
+                      address: addr,
                     },
-                    notes: f.notes,
+                    notes: f.notes ?? match.notes,
                   }
                 : {}),
+
               gcal_event_id: ev.id,
               gcal_calendar_id: src.id,
               gcal_etag: ev.etag ?? null,
