@@ -459,7 +459,37 @@ function DocPage() {
                       />
                     </div>
                   </div>
+                  {!it.isDistance && (
+                    <details open={!!(it.fromAddress || it.toAddress)}>
+                      <summary className="text-[11px] text-muted-foreground cursor-pointer select-none">
+                        Addresses for this task (optional)
+                      </summary>
+                      <div className="mt-1.5 space-y-1.5">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                            Pickup
+                          </div>
+                          <AddressAutocomplete
+                            value={it.fromAddress ?? ""}
+                            placeholder={doc.fromAddress || "Search address…"}
+                            onChange={(v) => updateItem(i, { fromAddress: v.address, fromCoords: v.coords })}
+                          />
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                            Drop-off
+                          </div>
+                          <AddressAutocomplete
+                            value={it.toAddress ?? ""}
+                            placeholder={doc.toAddress || "Search address…"}
+                            onChange={(v) => updateItem(i, { toAddress: v.address, toCoords: v.coords })}
+                          />
+                        </div>
+                      </div>
+                    </details>
+                  )}
                 </div>
+
               ))}
             </div>
           </Card>
