@@ -170,7 +170,10 @@ function DocPage() {
         addItem({ description: `Transport (${r.km} km)`, price: billing.ratePerKm, unit: "km", qty: r.km, isDistance: true });
       }
       upsertDoc({ ...doc, distanceKm: r.km });
+      if (trimmed)
+        toast.warning("Too many stops — later task legs were left out of the total");
       toast.success(`Distance: ${r.km} km`);
+
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Route failed");
     } finally {
