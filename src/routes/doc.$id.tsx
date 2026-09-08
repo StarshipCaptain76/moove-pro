@@ -133,15 +133,35 @@ function DocPage() {
     if (!doc.fromAddress || !doc.toAddress) return toast.error("Set both addresses first");
     setCalcing(true);
     try {
+      // Main pickup → doc stops → each task's own legs → main destination.
+      const chain: Array<{ address: string; lat?: number; lng?: number }> = [
+        { address: doc.fromAddress, ...(doc.fromCoords ?? {}) },
+        ...(doc.stops ?? [])
+          .filter((s) => s.address?.trim())
+          .map((s) => ({ address: s.address, ...(s.coords ?? {}) })),
+      ];
+      for (const it of doc.items) {
+        if (it.fromAddress?.trim()) chain.push({ address: it.fromAddress, ...(it.fromCoords ?? {}) });
+        if (it.toAddress?.trim()) chain.push({ address: it.toAddress, ...(it.toCoords ?? {}) });
+      }
+      chain.push({ address: doc.toAddress, ...(doc.toCoords ?? {}) });
+      const route = chain.filter(
+        (p, i) => i === 0 || p.address.trim() !== chain[i - 1].address.trim(),
+      );
+      let middle = route.slice(1, -1);
+      let trimmed = false;
+      if (middle.length > 23) {
+        middle = middle.slice(0, 23);
+        trimmed = true;
+      }
       const r = await distanceFn({
         data: {
-          from: { address: doc.fromAddress, ...(doc.fromCoords ?? {}) },
-          to: { address: doc.toAddress, ...(doc.toCoords ?? {}) },
-          stops: (doc.stops ?? [])
-            .filter((s) => s.address?.trim())
-            .map((s) => ({ address: s.address, ...(s.coords ?? {}) })),
+          from: route[0],
+          to: route[route.length - 1],
+          stops: middle,
         },
       });
+
       if (!r.km) return toast.error("No route found");
       const existingIdx = doc.items.findIndex((i) => i.isDistance);
       if (existingIdx >= 0) {
@@ -150,7 +170,10 @@ function DocPage() {
         addItem({ description: `Transport (${r.km} km)`, price: billing.ratePerKm, unit: "km", qty: r.km, isDistance: true });
       }
       upsertDoc({ ...doc, distanceKm: r.km });
+      if (trimmed)
+        toast.warning("Too many stops — later task legs were left out of the total");
       toast.success(`Distance: ${r.km} km`);
+
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Route failed");
     } finally {
@@ -436,7 +459,37 @@ function DocPage() {
                       />
                     </div>
                   </div>
+                  {!it.isDistance && (
+                    <details open={!!(it.fromAddress || it.toAddress)}>
+                      <summary className="text-[11px] text-muted-foreground cursor-pointer select-none">
+                        Addresses for this task (optional)
+                      </summary>
+                      <div className="mt-1.5 space-y-1.5">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                            Pickup
+                          </div>
+                          <AddressAutocomplete
+                            value={it.fromAddress ?? ""}
+                            placeholder={doc.fromAddress || "Search address…"}
+                            onChange={(v) => updateItem(i, { fromAddress: v.address, fromCoords: v.coords })}
+                          />
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                            Drop-off
+                          </div>
+                          <AddressAutocomplete
+                            value={it.toAddress ?? ""}
+                            placeholder={doc.toAddress || "Search address…"}
+                            onChange={(v) => updateItem(i, { toAddress: v.address, toCoords: v.coords })}
+                          />
+                        </div>
+                      </div>
+                    </details>
+                  )}
                 </div>
+
               ))}
             </div>
           </Card>

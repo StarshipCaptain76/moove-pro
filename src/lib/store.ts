@@ -67,7 +67,13 @@ export interface LineItem {
   price: number;
   unit: Unit;
   isDistance?: boolean;
+  /** Optional per-task route; blank falls back to the document route. */
+  fromAddress?: string;
+  toAddress?: string;
+  fromCoords?: { lat: number; lng: number };
+  toCoords?: { lat: number; lng: number };
 }
+
 
 export interface Customer {
   id: string;

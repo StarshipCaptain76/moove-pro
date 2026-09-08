@@ -135,8 +135,22 @@ export async function generatePdf(
   for (const item of doc.items) {
     const lineTotal = item.qty * item.price;
     const descLines = pdf.splitTextToSize(item.description, W - 2 * M - 65);
-    const rowH = Math.max(6, descLines.length * 4 + 2);
+    const routeText =
+      item.fromAddress || item.toAddress
+        ? `From ${item.fromAddress || doc.fromAddress || "—"}  →  To ${item.toAddress || doc.toAddress || "—"}`
+        : "";
+    const routeLines = routeText
+      ? (pdf.splitTextToSize(routeText, W - 2 * M - 65) as string[])
+      : [];
+    const rowH = Math.max(6, descLines.length * 4 + routeLines.length * 3.6 + 2);
     pdf.text(descLines, M + 2, y + 4);
+    if (routeLines.length) {
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(110, 110, 110);
+      pdf.text(routeLines, M + 4, y + 4 + descLines.length * 4);
+      pdf.setFontSize(9);
+      pdf.setTextColor(20, 20, 20);
+    }
     pdf.text(`${item.qty} ${item.unit}`, W - M - 55, y + 4, { align: "right" });
     pdf.text(fmtMoney(item.price, billing.currency), W - M - 30, y + 4, { align: "right" });
     pdf.text(fmtMoney(lineTotal, billing.currency), W - M - 2, y + 4, { align: "right" });
@@ -144,6 +158,7 @@ export async function generatePdf(
     pdf.setDrawColor(230, 230, 230);
     pdf.line(M, y, W - M, y);
   }
+
 
   const t = docTotals(doc, billing.vatPct);
   y += 4;
