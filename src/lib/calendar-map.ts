@@ -3,6 +3,9 @@
 
 export const CAL_TZ = "Africa/Johannesburg";
 export const DOC_PROP = "mooveDocId";
+/** Separator between generated metadata and the user's own notes. */
+export const NOTES_MARK = "— Notes —";
+
 
 export interface DocRow {
   id: string;
@@ -98,8 +101,9 @@ export function docToEvent(row: DocRow, appOrigin: string): Record<string, unkno
   if (row.distance_km) descLines.push(`Distance: ${Number(row.distance_km)} km`);
   const total = docTotal(row);
   if (total > 0) descLines.push(`Total: R ${total.toFixed(2)}`);
-  if (row.notes) descLines.push("", row.notes);
+  if (row.notes) descLines.push("", NOTES_MARK, row.notes);
   descLines.push("", `${appOrigin}/doc/${row.id}`);
+
 
   const start = row.scheduled_date!;
   const multiDay = !!row.scheduled_end_date && row.scheduled_end_date > start;
@@ -129,7 +133,7 @@ export function docToEvent(row: DocRow, appOrigin: string): Record<string, unkno
   };
 }
 
-const META_LINE = /^(Job( · .*)?|Invoice|Quote) [A-Z]+-?\d+$|^(Phone|Email|Route|Distance|Total):/;
+const META_LINE = /^(Job( · .*)?|Invoice|Quote) \S+$|^(Phone|Email|Route|Distance|Total):/;
 const APP_LINK = /^https?:\/\/\S+\/doc\/\S+$/;
 
 /**
@@ -139,15 +143,32 @@ const APP_LINK = /^https?:\/\/\S+\/doc\/\S+$/;
 export function extractNotes(description?: string | null): string | null {
   if (!description) return null;
   const lines = description.split("\n");
+
+  // Preferred path: everything after the notes marker (minus the trailing app link).
+  const markIdx = lines.findIndex((l) => l.trim() === NOTES_MARK);
+  if (markIdx !== -1) {
+    const after = lines
+      .slice(markIdx + 1)
+      .filter((l) => !APP_LINK.test(l.trim()));
+    const out = after.join("\n").trim();
+    return out || null;
+  }
+
   const generated = lines.some((l) => APP_LINK.test(l.trim())) || META_LINE.test(lines[0].trim());
   if (!generated) return description;
-  const kept = lines.filter((l) => {
-    const t = l.trim();
-    return !!t && !META_LINE.test(t) && !APP_LINK.test(t);
-  });
+
+  // Legacy descriptions (no marker): strip only the leading meta block and the app link.
+  let i = 0;
+  while (i < lines.length) {
+    const t = lines[i].trim();
+    if (!t || META_LINE.test(t)) i += 1;
+    else break;
+  }
+  const kept = lines.slice(i).filter((l) => !APP_LINK.test(l.trim()));
   const out = kept.join("\n").trim();
   return out || null;
 }
+
 
 /** Extract the doc-shaped fields from an inbound Google event. */
 export function eventToDocFields(ev: GEvent) {
