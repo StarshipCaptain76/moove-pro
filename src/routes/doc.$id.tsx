@@ -133,15 +133,35 @@ function DocPage() {
     if (!doc.fromAddress || !doc.toAddress) return toast.error("Set both addresses first");
     setCalcing(true);
     try {
+      // Main pickup → doc stops → each task's own legs → main destination.
+      const chain: Array<{ address: string; lat?: number; lng?: number }> = [
+        { address: doc.fromAddress, ...(doc.fromCoords ?? {}) },
+        ...(doc.stops ?? [])
+          .filter((s) => s.address?.trim())
+          .map((s) => ({ address: s.address, ...(s.coords ?? {}) })),
+      ];
+      for (const it of doc.items) {
+        if (it.fromAddress?.trim()) chain.push({ address: it.fromAddress, ...(it.fromCoords ?? {}) });
+        if (it.toAddress?.trim()) chain.push({ address: it.toAddress, ...(it.toCoords ?? {}) });
+      }
+      chain.push({ address: doc.toAddress, ...(doc.toCoords ?? {}) });
+      const route = chain.filter(
+        (p, i) => i === 0 || p.address.trim() !== chain[i - 1].address.trim(),
+      );
+      let middle = route.slice(1, -1);
+      let trimmed = false;
+      if (middle.length > 23) {
+        middle = middle.slice(0, 23);
+        trimmed = true;
+      }
       const r = await distanceFn({
         data: {
-          from: { address: doc.fromAddress, ...(doc.fromCoords ?? {}) },
-          to: { address: doc.toAddress, ...(doc.toCoords ?? {}) },
-          stops: (doc.stops ?? [])
-            .filter((s) => s.address?.trim())
-            .map((s) => ({ address: s.address, ...(s.coords ?? {}) })),
+          from: route[0],
+          to: route[route.length - 1],
+          stops: middle,
         },
       });
+
       if (!r.km) return toast.error("No route found");
       const existingIdx = doc.items.findIndex((i) => i.isDistance);
       if (existingIdx >= 0) {
