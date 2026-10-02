@@ -37,13 +37,9 @@ function NotFoundComponent() {
 
 const ErrorComponent = lazy(() =>
   Promise.resolve({
-    default: function ErrorComponent({
-      error,
-      reset,
-    }: {
-      error: Error;
-      reset: () => void;
-    }) {
+    default: function ErrorComponent(props: ErrorComponentProps) {
+      const error = props.error;
+      const reset = props.reset;
   console.error(error);
   const router = useRouter();
   useEffect(() => {
