@@ -93,7 +93,7 @@ function DocPage() {
     upsertDoc({ ...doc, items });
   };
   const addItem = (it: Partial<LineItem>) =>
-    upsertDoc({ ...doc, items: [...doc.items, { id: newId(), description: "", qty: 1, price: 0, unit: "each", ...it }] });
+    upsertDoc({ ...doc, items: [...doc.items, { id: newId(), description: "", qty: 1, price: 0, unit: "trip", ...it }] });
   const removeItem = (i: number) => upsertDoc({ ...doc, items: doc.items.filter((_, idx) => idx !== i) });
 
   const addKm = (km = 10) =>
