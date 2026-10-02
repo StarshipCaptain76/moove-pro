@@ -14,7 +14,7 @@ import {
   renameExpenseCategoryRow,
 } from "./sync";
 
-export type Unit = "each" | "hour" | "km" | "job";
+export type Unit = "trip" | "each" | "hour" | "km" | "job";
 export type PayMethod = "cash" | "eft" | "card";
 export type DocType = "quote" | "invoice" | "job";
 export type JobCategory = "furniture" | "rubble" | "grass" | "garden" | "other";

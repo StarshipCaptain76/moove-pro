@@ -93,7 +93,7 @@ function DocPage() {
     upsertDoc({ ...doc, items });
   };
   const addItem = (it: Partial<LineItem>) =>
-    upsertDoc({ ...doc, items: [...doc.items, { id: newId(), description: "", qty: 1, price: 0, unit: "each", ...it }] });
+    upsertDoc({ ...doc, items: [...doc.items, { id: newId(), description: "", qty: 1, price: 0, unit: "trip", ...it }] });
   const removeItem = (i: number) => upsertDoc({ ...doc, items: doc.items.filter((_, idx) => idx !== i) });
 
   const addKm = (km = 10) =>
@@ -433,8 +433,19 @@ function DocPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
-                        Qty ({it.unit})
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5 flex items-center gap-1">
+                        Qty
+                        <select
+                          value={it.unit}
+                          onChange={(e) => updateItem(i, { unit: e.target.value as LineItem["unit"] })}
+                          className="bg-transparent text-[10px] uppercase tracking-wider text-muted-foreground outline-none cursor-pointer"
+                        >
+                          <option value="trip">trip/s</option>
+                          <option value="each">each</option>
+                          <option value="hour">hour</option>
+                          <option value="km">km</option>
+                          <option value="job">job</option>
+                        </select>
                       </div>
                       <InlineTumbler
                         value={it.qty}
