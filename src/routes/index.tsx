@@ -47,7 +47,11 @@ function Index() {
     });
   }, [docs, billing.vatPct, upsertDoc, deleteDoc]);
 
-  const visible = docs.filter((d) => !d.archived);
+  const thisMonth = format(new Date(), "yyyy-MM");
+  // "Recent" only covers the current month, newest first.
+  const visible = docs
+    .filter((d) => !d.archived && (d.createdAt ?? "").startsWith(thisMonth))
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
   // Hide legacy archived quotes created before this cutoff — only quotes
   // archived from today onward appear in the archived list.
   const ARCHIVED_CUTOFF = "2026-07-10";
@@ -60,7 +64,6 @@ function Index() {
   const jobDate = (d: Doc) => d.scheduledDate || (d.status === "paid" && d.paidAt ? format(new Date(d.paidAt), "yyyy-MM-dd") : undefined);
   const todayJobs = docs.filter((d) => jobDate(d) === today && d.status !== "cancelled");
 
-  const thisMonth = format(new Date(), "yyyy-MM");
   const inThisMonth = (d: (typeof docs)[number]) => (d.createdAt ?? "").startsWith(thisMonth);
   const stats = {
     quotes: docs.filter((d) => d.type === "quote" && inThisMonth(d)).length,
@@ -106,7 +109,7 @@ function Index() {
           </TabsContent>
           <TabsContent value="recent" className="mt-0">
             {visible.length === 0 ? (
-              <Empty>Tap + to create your first quote or invoice.</Empty>
+              <Empty>No quotes, invoices or jobs this month yet.</Empty>
             ) : (
               <List docs={visible.slice(0, 15)} currency={billing.currency} vat={billing.vatPct} />
             )}
