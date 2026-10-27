@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep explicit booking exclusions in the shared job-exclusions module and apply them to cloud hydration, document pushes, and calendar imports so removed bookings cannot be restored by another sync path.

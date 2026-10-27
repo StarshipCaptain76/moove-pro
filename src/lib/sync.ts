@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isExcludedJob } from "./job-exclusions";
 import {
   useStore,
   DEFAULT_EXPENSE_CATEGORIES,
@@ -170,6 +171,7 @@ export function deleteCustomerRow(id: string) {
 }
 
 export function pushDoc(d: Doc) {
+  if (isExcludedJob({ type: d.type, name: d.customer.name, scheduledDate: d.scheduledDate })) return;
   const uid = state.userId;
   if (!uid) return;
   void withPush(async () => {
@@ -427,7 +429,11 @@ async function loadAll() {
         taxNumber: r.tax_number ?? undefined,
       }));
 
-      const docs: Doc[] = docRows.map((r) => ({
+      const docs: Doc[] = docRows.filter((r) => !isExcludedJob({
+        type: r.type,
+        name: (r.customer as Customer | null)?.name,
+        scheduledDate: r.scheduled_date,
+      })).map((r) => ({
         id: r.id,
         number: r.number,
         type: r.type as Doc["type"],
@@ -492,7 +498,9 @@ async function loadAll() {
       });
       const mergedCatalog = dedupeCatalogByName(mergeById(catalog, localCatalogToMerge));
       const mergedCustomers = mergeById(customers, prev.customers ?? []);
-      const mergedDocs = mergeById(docs, prev.docs ?? []);
+      const mergedDocs = mergeById(docs, (prev.docs ?? []).filter((d) =>
+        !isExcludedJob({ type: d.type, name: d.customer.name, scheduledDate: d.scheduledDate }),
+      ));
       const mergedExpenses = mergeById(expenses, prev.expenses ?? []);
 
       useStore.setState({
@@ -520,7 +528,8 @@ async function loadAll() {
         return !remoteCatalogNames.has(normalizedCatalogName(x.name));
       });
       const localOnlyCustomers = (prev.customers ?? []).filter((x) => !cloudIds.customers.has(x.id));
-      const localOnlyDocs = (prev.docs ?? []).filter((x) => !cloudIds.docs.has(x.id));
+      const localOnlyDocs = (prev.docs ?? []).filter((x) => !cloudIds.docs.has(x.id) &&
+        !isExcludedJob({ type: x.type, name: x.customer.name, scheduledDate: x.scheduledDate }));
       const localOnlyExpenses = (prev.expenses ?? []).filter((x) => !cloudIds.expenses.has(x.id));
       const localOnlyCategories = (prev.expenseCategories ?? []).filter(
         (n) => !remoteCategoryNames.includes(n),
