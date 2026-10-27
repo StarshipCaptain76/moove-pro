@@ -109,7 +109,7 @@ function Index() {
           </TabsContent>
           <TabsContent value="recent" className="mt-0">
             {visible.length === 0 ? (
-              <Empty>Tap + to create your first quote or invoice.</Empty>
+              <Empty>No quotes, invoices or jobs this month yet.</Empty>
             ) : (
               <List docs={visible.slice(0, 15)} currency={billing.currency} vat={billing.vatPct} />
             )}
