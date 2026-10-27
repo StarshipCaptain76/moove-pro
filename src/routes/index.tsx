@@ -10,7 +10,17 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { bucketMatch, bucketLabel, bucketBadge, invoiceBuckets, quoteBuckets, type BucketKey } from "@/lib/doc-buckets";
 
-export const Route = createFileRoute("/")({ component: Index });
+export const Route = createFileRoute("/")({
+  component: Index,
+  head: () => ({ meta: [
+    { title: "MOOVE | Jobs, quotes and invoices" },
+    { name: "description", content: "MOOVE dashboard with today's jobs, recent documents and invoice balances." },
+    { property: "og:title", content: "MOOVE | Jobs, quotes and invoices" },
+    { property: "og:description", content: "Today's MOOVE jobs, recent documents and invoice balances." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
+});
 
 function Index() {
   const { docs, billing, company, upsertDoc, deleteDoc } = useStore();

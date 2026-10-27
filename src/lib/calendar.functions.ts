@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { isExcludedJob } from "./job-exclusions";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   docToEvent,
@@ -199,6 +200,7 @@ export const syncCalendar = createServerFn({ method: "POST" })
     const now = () => new Date().toISOString();
 
     for (const row of docs) {
+      if (isExcludedJob({ type: row.type, name: row.customer?.name, scheduledDate: row.scheduled_date })) continue;
       const wanted = shouldSync(row);
       const synced = row.gcal_synced_at ? new Date(row.gcal_synced_at).getTime() : 0;
       const dirty = new Date(row.updated_at).getTime() > synced;
@@ -353,6 +355,7 @@ export const syncCalendar = createServerFn({ method: "POST" })
 
         const f = eventToDocFields(ev);
         if (!f.scheduled_date) continue;
+        if (isExcludedJob({ type: match?.type ?? "job", name: f.name, scheduledDate: f.scheduled_date })) continue;
 
         if (match) {
           const evUpdated = ev.updated ? new Date(ev.updated).getTime() : 0;

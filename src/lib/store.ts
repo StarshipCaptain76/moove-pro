@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { isExcludedJob } from "./job-exclusions";
 import {
   pushDoc,
   deleteDocRow,
@@ -235,6 +236,7 @@ export const useStore = create<State>()(
       density: "normal" as Density,
       upsertDoc: (d) =>
         {
+          if (isExcludedJob({ type: d.type, name: d.customer.name, scheduledDate: d.scheduledDate })) return;
           set((s) => ({
           docs: s.docs.some((x) => x.id === d.id)
             ? s.docs.map((x) => (x.id === d.id ? d : x))
@@ -407,6 +409,16 @@ export const useStore = create<State>()(
     {
       name: "moove-store-v1",
       version: 2,
+      merge: (persisted, current) => {
+        const saved = persisted as Partial<State> | undefined;
+        return {
+          ...current,
+          ...saved,
+          docs: (saved?.docs ?? current.docs).filter((d) =>
+            !isExcludedJob({ type: d.type, name: d.customer.name, scheduledDate: d.scheduledDate }),
+          ),
+        };
+      },
       migrate: (persisted: unknown, version: number) => {
         const s = persisted as State;
         if (!s) return s;
