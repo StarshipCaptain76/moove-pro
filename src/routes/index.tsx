@@ -64,7 +64,6 @@ function Index() {
   const jobDate = (d: Doc) => d.scheduledDate || (d.status === "paid" && d.paidAt ? format(new Date(d.paidAt), "yyyy-MM-dd") : undefined);
   const todayJobs = docs.filter((d) => jobDate(d) === today && d.status !== "cancelled");
 
-  const thisMonth = format(new Date(), "yyyy-MM");
   const inThisMonth = (d: (typeof docs)[number]) => (d.createdAt ?? "").startsWith(thisMonth);
   const stats = {
     quotes: docs.filter((d) => d.type === "quote" && inThisMonth(d)).length,
