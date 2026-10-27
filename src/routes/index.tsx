@@ -47,7 +47,11 @@ function Index() {
     });
   }, [docs, billing.vatPct, upsertDoc, deleteDoc]);
 
-  const visible = docs.filter((d) => !d.archived);
+  const thisMonth = format(new Date(), "yyyy-MM");
+  // "Recent" only covers the current month, newest first.
+  const visible = docs
+    .filter((d) => !d.archived && (d.createdAt ?? "").startsWith(thisMonth))
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
   // Hide legacy archived quotes created before this cutoff — only quotes
   // archived from today onward appear in the archived list.
   const ARCHIVED_CUTOFF = "2026-07-10";
